@@ -3,13 +3,27 @@ day: 4
 date: 2026-09-14
 title: 금빛 성화와 유목민의 시간
 titleEn: City Walk
-lede: 전날 밤 본 성당을 낮에 다시 찾고, 모스크와 박물관을 지나 공화국 광장에서 하루를 마쳤다. 저녁은 스테이크.
+lede: Navat의 아점으로 시작해 전날 밤 본 성당을 낮에 다시 찾고, 아르바트 거리와 모스크, 박물관을 지나 공화국 광장까지. 저녁은 스테이크.
 driveKm: 20
 toBase: true
 cover:
   src: /photos/day04/20260914_112152.jpg
   alt: 젠코브 성당 내부의 금빛 이콘
 stops:
+  - id: navat
+    name: Navat 아점
+    nameEn: Brunch at Navat
+    coords: [76.9421, 43.2636]
+    time: "09:30"
+    elevation: 736
+    kind: food
+    camera: { zoom: 15.5, pitch: 50, bearing: 170 }
+    note: 노란 외벽과 알록달록한 타일의 차이하나. 베쉬바르막과 바우르삭으로 하루를 시작했다.
+    photos:
+      - { src: /photos/day04/20260914_093049.jpg, alt: Navat 외관 }
+      - { src: /photos/day04/20260914_094741.jpg, alt: 알록달록한 실내 }
+      - { src: /photos/day04/20260914_100414.jpg, alt: 베쉬바르막 }
+      - { src: /photos/day04/20260914_094847.jpg, alt: 바우르삭 }
   - id: zenkov
     name: 젠코브 성당 · 판필로프 공원
     nameEn: Zenkov Cathedral · Panfilov Park
@@ -24,6 +38,20 @@ stops:
       - { src: /photos/day04/20260914_112439.jpg, alt: 이콘 }
       - { src: /photos/day04/20260914_111321.jpg, alt: 판필로프 공원 산책로 }
       - { src: /photos/day04/20260914_111825.jpg, alt: 공원의 비둘기 }
+  - id: arbat
+    name: 아르바트 거리
+    nameEn: Arbat · Zhibek Zholy Pedestrian Street
+    coords: [76.9441, 43.2622]
+    time: "12:20"
+    elevation: 740
+    kind: city
+    camera: { zoom: 16, pitch: 50, bearing: 170 }
+    note: 차 없는 보행자 거리. 꽃밭 사이로 거리 화가들의 그림이 늘어서 있다.
+    photos:
+      - { src: /photos/day04/20260914_122528.jpg, alt: 꽃밭이 이어진 보행자 거리 }
+      - { src: /photos/day04/20260914_122920.jpg, alt: 거리에 늘어선 그림들 }
+      - { src: /photos/day04/20260914_122824.jpg, alt: 그림을 파는 거리 }
+      - { src: /photos/day04/20260914_122910.jpg, alt: 초원 풍경화 }
   - id: central-mosque
     name: 중앙 모스크
     nameEn: Central Mosque of Almaty
@@ -32,7 +60,7 @@ stops:
     elevation: 730
     kind: culture
     camera: { zoom: 16, pitch: 55, bearing: -20 }
-    note: 금빛 돔과 하얀 첨탑. 성당에서 걸어서 20분 거리다.
+    note: 금빛 돔과 하얀 첨탑. 아르바트 거리 끝에서 조금만 더 걸으면 닿는다.
     photos:
       - { src: /photos/day04/20260914_134752.jpg, alt: 중앙 모스크 }
       - { src: /photos/day04/20260914_135848.jpg, alt: 첨탑 }

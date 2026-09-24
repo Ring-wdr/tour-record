@@ -23,7 +23,7 @@ const stop = z.object({
   approx: z.boolean().default(false),
   time: z.string().optional(),
   elevation: z.number().optional(),
-  kind: z.enum(['arrival', 'stay', 'nature', 'food', 'culture', 'market', 'departure']),
+  kind: z.enum(['arrival', 'stay', 'nature', 'food', 'culture', 'market', 'departure', 'city', 'flight']),
   /** 지도 카메라 — 산악 지형은 pitch를 높여 3D 지형이 보이게 */
   camera: z
     .object({
@@ -48,6 +48,8 @@ const days = defineCollection({
     driveKm: z.number(),
     /** 숙소에서 출발하는 날이면 true — 경로선 앞에 숙소 좌표를 붙인다 */
     fromBase: z.boolean().default(true),
+    /** 숙소로 돌아와 하루를 마친 날이면 true — 경로선 끝에 숙소 좌표를 붙인다 */
+    toBase: z.boolean().default(false),
     cover: photo.optional(),
     stops: z.array(stop),
   }),

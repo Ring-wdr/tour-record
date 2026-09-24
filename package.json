@@ -11,7 +11,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "deploy": "pnpm build && wrangler deploy",
-    "astro": "astro"
+    "astro": "astro",
+    "photos": "node scripts/import-photos.mjs",
+    "tracks": "node scripts/build-tracks.mjs"
   },
   "dependencies": {
     "astro": "^7.3.4",
@@ -20,6 +22,7 @@
     "sharp": "^0.35.4"
   },
   "devDependencies": {
+    "exifr": "^7.1.3",
     "wrangler": "^4.137.0"
   },
   "pnpm": {

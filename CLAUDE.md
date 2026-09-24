@@ -21,21 +21,33 @@
 ## 규칙
 - 좌표는 `[경도, 위도]`. 확인되지 않은 좌표는 `approx: true` (개발 서버에서 "좌표 대략치" 배지로 보임)
 - 지도 카메라 이동에 `padding` 대신 `offset`을 쓴다 — flyTo의 padding은 지도에 남아 fitBounds와 겹치면 NaN 오류가 난다
-- 사진 경로는 `/photos/dayXX/<장소>-NN.jpg`. 파일이 없으면 날짜 색 그라디언트 플레이스홀더가 자동으로 렌더링된다
-- 웹에서 가져온 임시 이미지는 로컬 개발용이다. 배포 전 전부 본인 사진으로 교체한다
+- 사진 파일이 없으면 날짜 색 그라디언트 플레이스홀더가 자동으로 렌더링된다
 - 공개 이미지에서는 EXIF GPS를 제거한다
+- **숙소 실제 좌표는 공개하지 않는다.** 실제 좌표는 git 제외 파일 `privacy.local.json`에만 두고, `pnpm tracks`가 그 반경 700m 안의 GPS 점을 잘라낸다. 사이트에 표시되는 숙소 좌표(`TRIP.base`, day01 hotel)는 알마티 시내 중심
 - 디자인 토큰은 `src/styles/global.css`의 `:root`. 폰트: Fraunces(영문 디스플레이), Noto Serif KR(본문/제목), Pretendard(UI), JetBrains Mono(데이터), Nanum Pen Script(손글씨 메모)
 - `prefers-reduced-motion`을 존중한다
 
+## 사진
+- 원본: `D:\archive\Camera_202609` (Galaxy S26 Ultra, 파일명 = 현지 촬영 시각 `YYYYMMDD_HHMMSS[_NNN].jpg`, 97%가 EXIF GPS 보유)
+- 주의: 파일명 시각은 휴대폰 시간대 기준이다. 착륙 직전 사진(`20260912_0112*`)처럼 한국 시간(+09:00)이 남은 사진이 있으므로 시각 계산에는 EXIF `OffsetTimeOriginal`을 반영한다 (01:12 KST = 9/11 21:12 알마티)
+- 동행자(초록색 옷)가 나온 사진은 쓰지 않는다. 본인은 푸른 체크셔츠, 침블락에서는 흰 점퍼
+- 장소 좌표·시각·고도는 사진 EXIF GPS의 중앙값으로 정했다 (2026-09-24)
+- 사진 선정은 dayXX.md의 `photos`/`cover`가 기준. 경로는 `/photos/dayXX/<원본파일명>.jpg`
+- `pnpm photos` → md에 적힌 사진만 원본에서 찾아 `public/photos/dayXX/`에 `<이름>.jpg`(2400px, 라이트박스) + `<이름>-md.webp`(1200px, 카드)로 변환, EXIF 전부 제거
+- 변환된 사진은 git에 넣지 않는다 (`.gitignore`). 배포는 로컬 빌드(`pnpm deploy`) 기준
+- `pnpm tracks` → 원본 사진 전체의 GPS를 실제 시각(EXIF 오프셋 반영) 순으로 이어 2~7일차 경로 생성, 시속 180km 초과 점은 GPS 오류로 제외. 1일차는 장소를 잇는 비행 경로
+- `.scratch/` (git 제외)에 EXIF 스캔(`scan.json`)·밀착 인화 스크립트가 있다: `node .scratch/sheet.mjs <날짜> <시작> <끝> <이름> [최대장수]`
+
 ## 확인이 필요한 데이터 (TODO)
-- 숙소, 샤슬릭 식당 Smile, 스테이크 식당, 알마티 미술관, 블랙 캐년, 싱잉 듄, 악타우의 정확한 좌표
-- 각 날짜의 실제 방문 시각, 일기 본문, 식당 이름
-- `driveKm`은 대략치
+- 각 날짜의 일기 본문, 식당 이름(Smile 외), 카투타우 식별(사진상 붉은 화산암 지대)
+- `driveKm`은 사진 GPS 직선거리 × 1.25 추정치
 - `astro.config.mjs`의 `site`, Outro의 작성자 이름
+- 영상 115개(mp4)는 아직 사용하지 않음
 
 ## 로드맵
 1. ~~스키마 + 더미 데이터 + 스크롤 지도 초안~~
-2. 사진 가져오기 스크립트: 원본 폴더 → exifr로 촬영 시각/GPS 읽기 → 날짜·장소 자동 매칭 → sharp로 AVIF/WebP + thumbhash 생성 → GPS 제거
-3. 실제 도로 경로 (휴대폰 타임라인 내보내기 또는 OSRM) → `dayRoute` 교체
-4. 사진이 많아지면 R2 업로드 + `src`를 R2 URL로 (`w`/`h` 명시)
-5. OG 이미지, 커스텀 도메인, 배포
+2. ~~사진 분류(EXIF 시각/GPS) + 장소 재구성 + 웹용 변환~~
+3. ~~실제 이동 경로: 사진 GPS 궤적 (`pnpm tracks` → `src/data/tracks.json`)~~ — 사진이 드문 구간(야간 귀가 등)은 직선. 필요하면 OSRM으로 도로 스냅
+4. 짧은 영상 클립(음소거 루프) 추가
+5. 사진 R2 업로드 + `src`를 R2 URL로 (`w`/`h` 명시)
+6. OG 이미지, 커스텀 도메인, 배포

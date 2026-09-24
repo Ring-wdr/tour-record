@@ -71,6 +71,13 @@ new IntersectionObserver(([e]) => document.body.classList.toggle('in-story', e.i
   rootMargin: '-50% 0px -50% 0px',
 }).observe(story);
 
+// 일기 페이지로 바로 이동해도 레일이 맞도록 챕터 단위로도 날짜를 갱신
+const chapterIO = new IntersectionObserver(
+  (entries) => entries.forEach((e) => e.isIntersecting && setRail(Number((e.target as HTMLElement).dataset.day))),
+  { rootMargin: '-50% 0px -50% 0px' },
+);
+document.querySelectorAll('.chapter').forEach((c) => chapterIO.observe(c));
+
 const railLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-rail-day]')];
 function setRail(day: number) {
   railLinks.forEach((a) => a.classList.toggle('is-active', Number(a.dataset.railDay) === day));

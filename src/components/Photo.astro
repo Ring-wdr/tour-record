@@ -37,7 +37,7 @@ const angle = [...photo.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
         data-pswp-height={p.h}
         data-caption={p.caption ?? p.alt}
       >
-        <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+        <img src={p.display} alt={p.alt} width={p.w} height={p.h} loading={eager ? 'eager' : 'lazy'} decoding="async" />
       </a>
     )
   ) : (

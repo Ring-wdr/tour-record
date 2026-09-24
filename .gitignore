@@ -8,3 +8,8 @@ dist/
 # 원본 사진은 R2에 올리고 저장소에는 넣지 않는다
 photos-raw/
 public/vendor/
+.scratch/
+# 변환된 사진은 저장소에 넣지 않는다 (pnpm photos로 재생성, 추후 R2)
+public/photos/day*/
+# 숙소 등 비공개 좌표 (scripts/build-tracks.mjs가 읽는 프라이버시 구역)
+privacy.local.json

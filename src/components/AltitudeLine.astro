@@ -11,9 +11,15 @@ const H = 360;
 const PAD = { top: 60, right: 30, bottom: 50, left: 30 };
 const MAX = 3500;
 
+// 고도가 없는 장소(인천 등)는 그래프에서 뺀다
 const pts = days.flatMap((d) =>
-  d.data.stops.map((s) => ({ day: d.data.day, name: s.name, elev: s.elevation ?? 0, kind: s.kind })),
+  d.data.stops
+    .filter((s) => s.elevation != null)
+    .map((s) => ({ day: d.data.day, name: s.name, elev: s.elevation!, kind: s.kind })),
 );
+const lowest = Math.min(...pts.map((p) => p.elev));
+const highest = Math.max(...pts.map((p) => p.elev));
+const fmt = (n: number) => n.toLocaleString('en-US');
 const step = (W - PAD.left - PAD.right) / (pts.length - 1);
 const x = (i: number) => PAD.left + i * step;
 const y = (e: number) => PAD.top + (1 - e / MAX) * (H - PAD.top - PAD.bottom);
@@ -27,15 +33,36 @@ const dayStarts = days.map((d) => ({
   i: pts.findIndex((p) => p.day === d.data.day),
 }));
 
-// 라벨은 자연 명소만 — 겹치지 않도록
-const labeled = pts.map((p, i) => ({ ...p, i })).filter((p) => p.kind === 'nature');
+// 라벨: 주변보다 두드러지는 지점부터 배치하고, 이미 놓인 라벨과 겹치면 건너뛴다.
+// 봉우리는 점 위에, 골짜기는 점 아래에 단다.
+const scored = pts.map((p, i) => {
+  const prev = pts[i - 1]?.elev ?? p.elev;
+  const next = pts[i + 1]?.elev ?? p.elev;
+  return { ...p, i, stay: p.kind === 'stay', below: p.elev < prev && p.elev < next, score: Math.abs(p.elev - (prev + next) / 2) + p.elev * 0.05 };
+});
+const placed: { x: number; y: number }[] = [];
+const labeled = scored
+  .filter((p) => !p.stay)
+  .sort((a, b) => b.score - a.score)
+  .filter((p) => {
+    const lx = x(p.i);
+    const ly = y(p.elev) + (p.below ? 30 : -20);
+    if (placed.some((q) => Math.abs(q.x - lx) < 78 && Math.abs(q.y - ly) < 34)) return false;
+    placed.push({ x: lx, y: ly });
+    return true;
+  });
+// 라벨에 쓰는 짧은 이름: "침블락 · 탈가르 패스" → "탈가르 패스", "샤슬릭 · Smile" → "샤슬릭"
+const shortName = (n: string) => {
+  const parts = n.split(' · ');
+  return parts.length > 1 && /[가-힣]/.test(parts[1]) ? parts[1] : parts[0];
+};
 ---
 
 <section class="alt" data-inview>
   <div class="alt-head reveal">
     <p class="eyebrow">The Altitude Line</p>
-    <h2>680m에서 3,163m까지</h2>
-    <p>공항에서 시작해 빙하 호수와 곤돌라 정상을 지나, 해발 600m의 사막까지. 일주일 동안 오르내린 높이를 한 줄로 그려봤다.</p>
+    <h2>{fmt(lowest)}m에서 {fmt(highest)}m까지</h2>
+    <p>빙하 호수와 곤돌라 종점을 지나 사막의 줄무늬 산까지. 일주일 동안 오르내린 높이를 한 줄로 그려봤다.</p>
   </div>
 
   <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="여행 기간 방문지의 해발고도 변화">
@@ -79,10 +106,10 @@ const labeled = pts.map((p, i) => ({ ...p, i })).filter((p) => p.kind === 'natur
     {
       labeled.map((p) => (
         <g class="label" style={`--d:${(p.i / pts.length) * 2.4 + 0.2}s`}>
-          <text x={x(p.i)} y={y(p.elev) - 26} text-anchor="middle" class="l-name">
-            {p.name.split(/ [+·]/)[0]}
+          <text x={x(p.i)} y={y(p.elev) + (p.below ? 22 : -26)} text-anchor="middle" class="l-name">
+            {shortName(p.name)}
           </text>
-          <text x={x(p.i)} y={y(p.elev) - 12} text-anchor="middle" class="l-elev">
+          <text x={x(p.i)} y={y(p.elev) + (p.below ? 36 : -12)} text-anchor="middle" class="l-elev">
             {p.elev.toLocaleString('en-US')}
           </text>
         </g>

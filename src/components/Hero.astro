@@ -17,7 +17,7 @@ const { cover } = Astro.props;
 
   <div class="hero-meta hero-meta-top">
     <span class="eyebrow">A Travel Journal — {TRIP.country}</span>
-    <span class="eyebrow">43.2380° N · 76.9450° E</span>
+    <span class="eyebrow">{TRIP.base[1].toFixed(4)}° N · {TRIP.base[0].toFixed(4)}° E</span>
   </div>
 
   <div class="hero-title">

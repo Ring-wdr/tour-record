@@ -9,8 +9,8 @@ export type PhotoInput = Stop['photos'][number];
 
 export const TRIP = {
   title: 'ALMATY',
-  subtitle: 'Seven Days Under the Tian Shan',
-  subtitleKo: '톈산 아래에서 보낸 7일',
+  subtitle: 'Seven Days in Kazakhstan',
+  subtitleKo: '카자흐스탄에서 보낸 7일',
   country: 'Kazakhstan',
   start: '2026.09.11',
   end: '2026.09.17',
@@ -94,11 +94,10 @@ export async function resolvePhoto(p: PhotoInput): Promise<ResolvedPhoto> {
   if (/^https?:\/\//.test(p.src)) {
     return { ...p, exists: true, w: p.w ?? 1600, h: p.h ?? 1067, display: p.src };
   }
-  if (!sizeCache.has(p.src)) {
+  // 없는 파일은 캐시하지 않는다 — 개발 서버 실행 중에 pnpm photos로 추가한 사진도 바로 반영되도록
+  if (!sizeCache.get(p.src)) {
     const file = join(process.cwd(), 'public', p.src);
-    if (!existsSync(file)) {
-      sizeCache.set(p.src, null);
-    } else {
+    if (existsSync(file)) {
       const meta = await sharp(file).rotate().metadata();
       // EXIF 회전을 반영한 크기
       const rotated = (meta.orientation ?? 1) >= 5;

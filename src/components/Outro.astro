@@ -3,11 +3,10 @@ import { TRIP } from '../lib/trip';
 ---
 
 <footer class="outro">
-  <p class="eyebrow reveal">Fin.</p>
-  <p class="line reveal">다음엔 겨울의 톈산으로.</p>
+  <p class="fin reveal">Fin.</p>
   <div class="credits reveal">
     <span class="eyebrow">{TRIP.title} · {TRIP.start} — {TRIP.end}</span>
-    <span class="eyebrow">Photographed & written by — 이름</span>
+    <span class="eyebrow">Written by 김만중</span>
     <span class="eyebrow">Map © OpenStreetMap contributors · OpenFreeMap</span>
   </div>
 </footer>
@@ -24,10 +23,13 @@ import { TRIP } from '../lib/trip';
     gap: 24px;
     padding: 80px var(--gutter);
   }
-  .line {
-    font-family: var(--serif);
-    font-weight: 900;
-    font-size: clamp(28px, 5vw, 64px);
+  .fin {
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-weight: 300;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(64px, 12vw, 160px);
+    line-height: 1;
     margin: 0;
   }
   .credits {

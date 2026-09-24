@@ -5,9 +5,11 @@ title: 시장의 냄새, 미술관의 빛
 titleEn: Bazaar, Art & Goodbye
 lede: 과일과 말린 견과가 산처럼 쌓인 시장에서 시작해, 새로 문을 연 미술관을 거쳐 밤 비행기로 떠났다.
 driveKm: 30
+# 개요에서는 인천까지의 비행 구간 대신 카자흐스탄만 비춘다
+spotlightCountry: true
 cover:
-  src: /photos/day07/20260917_101401.jpg
-  alt: 위에서 내려다본 그린 바자르
+  src: /photos/day07/20260917_101203.jpg
+  alt: 2층에서 내려다본 그린 바자르 중앙 홀
 stops:
   - id: green-bazaar
     name: 그린 바자르
@@ -31,7 +33,7 @@ stops:
     time: "11:40"
     elevation: 805
     kind: food
-    camera: { zoom: 15.5, pitch: 50, bearing: 30 }
+    camera: { zoom: 15.5, pitch: 50, bearing: 170 }
     note: 화려한 벽화가 있는 식당에서 맥주 한 잔과 함께.
     photos:
       - { src: /photos/day07/20260917_115309.jpg, alt: 점심 }
@@ -43,7 +45,7 @@ stops:
     time: "13:10"
     elevation: 885
     kind: culture
-    camera: { zoom: 15.5, pitch: 55, bearing: 30 }
+    camera: { zoom: 15.5, pitch: 50, bearing: 180 }
     note: 새로 문을 연 현대미술관. 중앙아시아 작가들의 작품부터 크리스찬 마클레이의 〈The Clock〉까지.
     photos:
       - { src: /photos/day07/20260917_131211.jpg, alt: 미술관 앞 조형물 }
@@ -60,7 +62,7 @@ stops:
     elevation: 634
     kind: departure
     camera: { zoom: 11, pitch: 30, bearing: 0 }
-    note: 밤 비행기에 오른다. 다음에는 겨울의 톈산으로.
+    note: 밤 비행기에 오른다.
     photos:
       - { src: /photos/day07/20260917_221843.jpg, alt: 출발 전 기내 화면 }
   - id: icn-return

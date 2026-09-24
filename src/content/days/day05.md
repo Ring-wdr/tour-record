@@ -42,10 +42,10 @@ stops:
     nameEn: Kolsai Lake
     coords: [78.3265, 42.9876]
     time: "13:25"
-    elevation: 1823
+    elevation: 1818
     kind: nature
     camera: { zoom: 13.5, pitch: 65, bearing: 190 }
-    note: 가문비나무 숲 사이로 길게 뻗은 호수. 톈산의 진주라고 불린다.
+    note: 가문비나무 숲 사이로 길게 뻗은 호수. 세 개의 콜사이 호수 중 가장 아래에 있다.
     photos:
       - { src: /photos/day05/20260915_133830.jpg, alt: 콜사이 호수 }
       - { src: /photos/day05/20260915_133303.jpg, alt: 숲 사이의 호수 }
@@ -56,7 +56,7 @@ stops:
     nameEn: Kaindy Lake
     coords: [78.4648, 42.9845]
     time: "15:55"
-    elevation: 1806
+    elevation: 2000
     kind: nature
     camera: { zoom: 14, pitch: 70, bearing: 150 }
     note: 1911년 지진으로 생긴 호수. 물에 잠긴 가문비나무 줄기가 수면 위로 솟아 있다. 전망대 난간에는 검독수리가 앉아 있었다.

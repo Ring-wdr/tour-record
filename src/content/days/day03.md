@@ -15,7 +15,7 @@ stops:
     nameEn: Medeu Gondola Station
     coords: [77.0517, 43.1630]
     time: "09:40"
-    elevation: 1574
+    elevation: 1691
     kind: nature
     camera: { zoom: 13.5, pitch: 60, bearing: 150 }
     note: 메데우에서 곤돌라를 타고 침블락으로 올라간다.
@@ -27,10 +27,10 @@ stops:
     nameEn: Shymbulak · Talgar Pass
     coords: [77.1124, 43.1191]
     time: "11:00"
-    elevation: 3163
+    elevation: 3200
     kind: nature
     camera: { zoom: 13.2, pitch: 70, bearing: 200 }
-    note: 곤돌라 종점 탈가르 패스(3,163m). 능선을 조금 더 오르자 휴대폰 GPS에 3,264m가 찍혔다. 네 시간 넘게 머물렀다.
+    note: 곤돌라 종점 탈가르 패스(3,200m). 능선을 조금 더 오르자 휴대폰 GPS에 3,264m가 찍혔다. 네 시간 넘게 머물렀다.
     photos:
       - { src: /photos/day03/20260913_113139.jpg, alt: 구름 아래의 봉우리 }
       - { src: /photos/day03/20260913_110420.jpg, alt: 빙하와 곤돌라 정류장 }

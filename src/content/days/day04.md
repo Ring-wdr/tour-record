@@ -43,25 +43,41 @@ stops:
     time: "14:25"
     elevation: 854
     kind: culture
-    camera: { zoom: 15.5, pitch: 55, bearing: 0 }
+    camera: { zoom: 15.5, pitch: 50, bearing: 180 }
     note: 유르트, 황금 유물, 초원의 생활. 카자흐스탄을 이해하는 가장 빠른 방법.
     photos:
       - { src: /photos/day04/20260914_145417.jpg, alt: 유르트 전시 }
       - { src: /photos/day04/20260914_142659.jpg, alt: 박물관 외관 }
       - { src: /photos/day04/20260914_150443.jpg, alt: 황금 유물 }
       - { src: /photos/day04/20260914_151921.jpg, alt: 전시실 }
+  - id: afternoon-walk
+    name: 광장으로 가는 길
+    nameEn: Afternoon Walk
+    coords: [76.9495, 43.2329]
+    time: "16:17"
+    elevation: 859
+    kind: city
+    camera: { zoom: 16, pitch: 55, bearing: 250 }
+    note: 박물관을 나와 공화국 광장까지 걸었다. 동상과 꽃밭, 지붕 끝이 하늘로 들린 하얀 건물을 지나 오후 햇살 속을 천천히.
+    photos:
+      - { src: /photos/day04/20260914_162635.jpg, alt: 지붕이 넓게 펼쳐진 하얀 건물 }
+      - { src: /photos/day04/20260914_161742.jpg, alt: 산책길의 동상 }
+      - { src: /photos/day04/20260914_161846.jpg, alt: 꽃밭 위로 드리운 그림자 }
+      - { src: /photos/day04/20260914_162134.jpg, alt: 오후 햇살 속의 고층 빌딩 }
   - id: republic-square
     name: 공화국 광장
     nameEn: Republic Square
-    coords: [76.9452, 43.2374]
+    coords: [76.9439, 43.2373]
     time: "16:45"
-    elevation: 835
+    elevation: 834
     kind: city
     camera: { zoom: 15.5, pitch: 55, bearing: 180 }
-    note: 분수와 독립 기념탑. 해가 기울기 시작하는 시간.
+    note: 광장 남쪽의 분수와 꽃밭을 지나 시청 앞 계단으로, 그리고 독립 기념탑까지. 해가 기울기 시작하는 시간.
     photos:
       - { src: /photos/day04/20260914_165809.jpg, alt: 독립 기념탑 }
       - { src: /photos/day04/20260914_164716.jpg, alt: 광장 분수 }
+      - { src: /photos/day04/20260914_165239.jpg, alt: 꽃밭 너머의 시청 }
+      - { src: /photos/day04/20260914_164920.jpg, alt: 줄지어 솟는 분수 }
       - { src: /photos/day04/20260914_165509.jpg, alt: 공화국 광장 }
   - id: steak
     name: 스테이크 디너
@@ -70,7 +86,7 @@ stops:
     time: "18:00"
     elevation: 832
     kind: food
-    camera: { zoom: 15.5, pitch: 50, bearing: 20 }
+    camera: { zoom: 15.5, pitch: 50, bearing: 170 }
     note: 카자흐스탄 소고기는 기대 이상이었다. 카르파초로 시작해 스테이크로.
     photos:
       - { src: /photos/day04/20260914_183442.jpg, alt: 스테이크 }

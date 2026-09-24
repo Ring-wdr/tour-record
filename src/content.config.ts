@@ -50,6 +50,8 @@ const days = defineCollection({
     fromBase: z.boolean().default(true),
     /** 숙소로 돌아와 하루를 마친 날이면 true — 경로선 끝에 숙소 좌표를 붙인다 */
     toBase: z.boolean().default(false),
+    /** 하루 개요를 경로 대신 카자흐스탄 전체로 비추고, 국경 밖은 어둡게 가린다 */
+    spotlightCountry: z.boolean().default(false),
     cover: photo.optional(),
     stops: z.array(stop),
   }),

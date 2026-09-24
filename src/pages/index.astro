@@ -8,6 +8,7 @@ import AltitudeLine from '../components/AltitudeLine.astro';
 import Outro from '../components/Outro.astro';
 import { getDays, tripStats, dayRoute, DAY_TONES, TRIP } from '../lib/trip';
 import tracks from '../data/tracks.json';
+import kazakhstan from '../data/kazakhstan.json';
 
 const days = await getDays();
 const stats = tripStats(days);
@@ -15,11 +16,13 @@ const stats = tripStats(days);
 // 지도 스크립트에 넘길 최소 데이터
 const mapData = {
   base: TRIP.base,
+  country: { bbox: kazakhstan.bbox, ring: kazakhstan.ring },
   days: days.map((d, i) => ({
     day: d.data.day,
     accent: DAY_TONES[d.data.day].accent,
     route: dayRoute(d, days[i - 1], (tracks as Record<string, [number, number][]>)[d.data.day]),
-    stops: d.data.stops.map((s) => ({ id: s.id, name: s.name, coords: s.coords, camera: s.camera })),
+    spotlight: d.data.spotlightCountry,
+    stops: d.data.stops.map((s) => ({ id: s.id, name: s.name, kind: s.kind, coords: s.coords, camera: s.camera })),
   })),
 };
 ---

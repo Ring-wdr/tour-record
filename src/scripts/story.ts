@@ -8,11 +8,13 @@ type LngLat = [number, number];
 type Camera = { zoom: number; pitch: number; bearing: number };
 type TripData = {
   base: LngLat;
+  country: { bbox: [LngLat, LngLat]; ring: LngLat[] };
   days: {
     day: number;
     accent: string;
     route: LngLat[];
-    stops: { id: string; name: string; coords: LngLat; camera: Camera }[];
+    spotlight?: boolean;
+    stops: { id: string; name: string; kind: string; coords: LngLat; camera: Camera }[];
   }[];
 };
 
@@ -170,6 +172,33 @@ map.on('load', () => {
     paint: { 'line-color': '#ffffff', 'line-width': 3.5 },
   });
 
+  // 나라 스포트라이트: 세계 전체를 덮는 사각형에 카자흐스탄 모양 구멍을 뚫어 국경 밖을 어둡게
+  const world: LngLat[] = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+  map.addSource('spotlight', {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world, [...data.country.ring].reverse()] } },
+        { type: 'Feature', properties: { edge: true }, geometry: { type: 'LineString', coordinates: data.country.ring } },
+      ],
+    },
+  });
+  map.addLayer({
+    id: 'spotlight-mask',
+    type: 'fill',
+    source: 'spotlight',
+    filter: ['!', ['has', 'edge']],
+    paint: { 'fill-color': '#000000', 'fill-opacity': 0, 'fill-opacity-transition': { duration: 1200 } },
+  });
+  map.addLayer({
+    id: 'spotlight-edge',
+    type: 'line',
+    source: 'spotlight',
+    filter: ['has', 'edge'],
+    paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0, 'line-opacity-transition': { duration: 1200 } },
+  });
+
   mapReady = true;
   pending?.();
   pending = null;
@@ -235,6 +264,24 @@ function viewport() {
   return { w, h, wide: w > 860 };
 }
 
+/**
+ * 3D 지형은 자연 명소와 하루 개요에서만 켠다.
+ * 알마티 시내는 산 바로 아래라 저해상도 DEM을 과장해 올리면
+ * 카메라 앞 지면이 솟아 식당·박물관 같은 시내 장소를 가린다 — 시내에서는 음영만 남기고 평면으로.
+ */
+let terrainOn = true;
+function setTerrain(on: boolean) {
+  if (on === terrainOn) return;
+  terrainOn = on;
+  map.setTerrain(on ? { source: 'dem', exaggeration: 1.4 } : null);
+}
+
+function setSpotlight(on: boolean, color = '#ffffff') {
+  map.setPaintProperty('spotlight-mask', 'fill-opacity', on ? 0.72 : 0);
+  map.setPaintProperty('spotlight-edge', 'line-opacity', on ? 0.9 : 0);
+  if (on) map.setPaintProperty('spotlight-edge', 'line-color', color);
+}
+
 function go(fn: () => void) {
   if (mapReady) fn();
   else pending = fn;
@@ -243,14 +290,18 @@ function go(fn: () => void) {
 function showDay(day: number) {
   go(() => {
     const d = dayByNum.get(day)!;
-    const b = d.route.reduce((acc, c) => acc.extend(c), new LngLatBounds(d.route[0], d.route[0]));
+    setTerrain(true);
+    setSpotlight(!!d.spotlight, d.accent);
+    const b = d.spotlight
+      ? new LngLatBounds(data.country.bbox[0], data.country.bbox[1])
+      : d.route.reduce((acc, c) => acc.extend(c), new LngLatBounds(d.route[0], d.route[0]));
     const { w, h, wide } = viewport();
     map.fitBounds(b, {
       padding: wide
         ? { top: h * 0.15, bottom: h * 0.15, left: w * 0.12, right: w * 0.4 }
         : { top: h * 0.12, bottom: h * 0.4, left: w * 0.1, right: w * 0.1 },
       maxZoom: 12,
-      pitch: 35,
+      pitch: d.spotlight ? 0 : 35,
       bearing: 0,
       duration: reduceMotion ? 0 : 2400,
       essential: true,
@@ -263,6 +314,8 @@ function showDay(day: number) {
 function showStop(id: string) {
   go(() => {
     const s = stopById.get(id)!;
+    setTerrain(s.kind === 'nature');
+    setSpotlight(false);
     const { w, h, wide } = viewport();
     map.flyTo({
       center: s.coords,

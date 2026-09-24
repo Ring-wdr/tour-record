@@ -28,7 +28,7 @@ stops:
     nameEn: Big Almaty Lake
     coords: [76.9873, 43.0568]
     time: "11:10"
-    elevation: 2489
+    elevation: 2511
     kind: nature
     camera: { zoom: 13.4, pitch: 65, bearing: 160 }
     note: 시야가 열리는 순간 사진으로만 보던 청록색이 눈앞에 있다. 호수 뒤로는 만년설을 인 봉우리가 서 있다.
@@ -43,7 +43,7 @@ stops:
     time: "16:20"
     elevation: 737
     kind: food
-    camera: { zoom: 15.5, pitch: 55, bearing: -30 }
+    camera: { zoom: 15.5, pitch: 50, bearing: 170 }
     note: 산에서 내려와 이른 저녁. 숯불에 구운 꼬치와 맥주 타워.
     photos:
       - { src: /photos/day02/20260912_170346.jpg, alt: 샤슬릭 }
@@ -55,9 +55,9 @@ stops:
     nameEn: Kok Tobe
     coords: [76.9757, 43.2342]
     time: "19:30"
-    elevation: 1065
+    elevation: 1100
     kind: city
-    camera: { zoom: 14.5, pitch: 60, bearing: -40 }
+    camera: { zoom: 14.5, pitch: 55, bearing: 160 }
     note: 케이블카를 타고 도시 위 언덕으로. 관람차와 패스트 코스터를 타고, 알마티의 야경을 내려다봤다.
     photos:
       - { src: /photos/day02/20260912_202955.jpg, alt: 콕토베에서 본 알마티 야경 }

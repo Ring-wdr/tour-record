@@ -46,21 +46,11 @@ stops:
     elevation: 795
     kind: nature
     camera: { zoom: 14, pitch: 65, bearing: 120 }
-    note: 구멍이 숭숭 뚫린 붉은 화산암 지대. 바위 위에 올라가 한참을 놀았다.
+    note: 구멍이 숭숭 뚫린 붉은 화산암 지대. 바위 위에 올라가 한참을 놀았다. 오후에는 흰색, 주황, 빨강 지층이 켜켜이 쌓인 언덕 사이를 걸었다. 다른 행성에 온 것 같은 풍경.
     photos:
       - { src: /photos/day06/20260916_135717.jpg, alt: 붉은 화산암 }
       - { src: /photos/day06/20260916_140021.jpg, alt: 구름과 바위 }
       - { src: /photos/day06/20260916_140049.jpg, alt: 화산암 위에 올라앉아 }
-  - id: aktau
-    name: 악타우 산
-    nameEn: Aktau Mountains
-    coords: [79.2470, 43.9977]
-    time: "15:15"
-    elevation: 528
-    kind: nature
-    camera: { zoom: 13.5, pitch: 65, bearing: 300 }
-    note: 흰색, 주황, 빨강 지층이 켜켜이 쌓인 산. 다른 행성에 온 것 같은 풍경.
-    photos:
       - { src: /photos/day06/20260916_154327.jpg, alt: 줄무늬 지층 }
       - { src: /photos/day06/20260916_151457.jpg, alt: 붉은 언덕 }
       - { src: /photos/day06/20260916_152311.jpg, alt: 하얀 절벽 }

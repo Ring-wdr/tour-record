@@ -14,7 +14,8 @@
     "photos": "node scripts/import-photos.mjs",
     "tracks": "node scripts/build-tracks.mjs",
     "cf:preview": "pnpm build && wrangler dev",
-    "cf:deploy": "pnpm build && wrangler deploy"
+    "cf:deploy": "pnpm build && wrangler deploy",
+    "photos:upload": "node scripts/upload-photos.mjs"
   },
   "dependencies": {
     "astro": "^7.3.4",

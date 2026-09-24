@@ -1,7 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
-import sharp from 'sharp';
 import { getCollection, type CollectionEntry } from 'astro:content';
+import photoSizes from '../data/photos.json';
 
 export type Day = CollectionEntry<'days'>;
 export type Stop = Day['data']['stops'][number];
@@ -76,40 +74,23 @@ export function tripStats(days: Day[]) {
   };
 }
 
-/** 화면 표시용(카드/모자이크) — pnpm photos가 만든 -md.webp가 있으면 그걸 쓴다 */
+/** 화면 표시용(display)은 카드·모자이크에 쓰는 1200px WebP, src는 라이트박스용 2400px JPEG */
 export type ResolvedPhoto = PhotoInput & { exists: boolean; w: number; h: number; display: string };
 
-function displaySrc(src: string) {
-  const md = src.replace(/\.jpg$/i, '-md.webp');
-  return md !== src && existsSync(join(process.cwd(), 'public', md)) ? md : src;
-}
-
-const sizeCache = new Map<string, { w: number; h: number } | null>();
+const SIZES = photoSizes as Record<string, { w: number; h: number }>;
 
 /**
- * 로컬 사진은 존재 여부와 크기를 빌드 시 확인한다.
- * 파일이 없으면 exists=false → 플레이스홀더로 렌더링된다.
+ * 사진 크기는 pnpm photos가 만든 src/data/photos.json에서 읽는다.
+ * 사진 파일은 R2에서 서빙되므로 빌드할 때 파일이 없어도 된다.
+ * 목록에 없는 사진은 exists=false → 플레이스홀더로 렌더링된다.
  */
 export async function resolvePhoto(p: PhotoInput): Promise<ResolvedPhoto> {
   if (/^https?:\/\//.test(p.src)) {
     return { ...p, exists: true, w: p.w ?? 1600, h: p.h ?? 1067, display: p.src };
   }
-  // 없는 파일은 캐시하지 않는다 — 개발 서버 실행 중에 pnpm photos로 추가한 사진도 바로 반영되도록
-  if (!sizeCache.get(p.src)) {
-    const file = join(process.cwd(), 'public', p.src);
-    if (existsSync(file)) {
-      const meta = await sharp(file).rotate().metadata();
-      // EXIF 회전을 반영한 크기
-      const rotated = (meta.orientation ?? 1) >= 5;
-      sizeCache.set(p.src, {
-        w: (rotated ? meta.height : meta.width) ?? 1600,
-        h: (rotated ? meta.width : meta.height) ?? 1067,
-      });
-    }
-  }
-  const size = sizeCache.get(p.src);
+  const size = SIZES[p.src];
   return size
-    ? { ...p, exists: true, ...size, display: displaySrc(p.src) }
+    ? { ...p, exists: true, ...size, display: p.src.replace(/\.jpg$/i, '-md.webp') }
     : { ...p, exists: false, w: 1600, h: 1067, display: p.src };
 }
 

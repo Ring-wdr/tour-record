@@ -1,9 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "almaty-2026",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "404-page"
-  }
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // 사진은 dist에 넣지 않고(.assetsignore) R2에서 Worker가 서빙
+    "run_worker_first": ["/photos/*"]
+  },
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "almaty-2026-photos" }]
 }

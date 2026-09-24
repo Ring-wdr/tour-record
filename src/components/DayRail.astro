@@ -1,0 +1,117 @@
+---
+import { DAY_TONES, formatDate, pad2, type Day } from '../lib/trip';
+
+interface Props {
+  days: Day[];
+}
+const { days } = Astro.props;
+---
+
+<nav class="rail" aria-label="날짜별 이동">
+  <ol>
+    {
+      days.map((d) => (
+        <li>
+          <a href={`#day-${d.data.day}`} data-rail-day={d.data.day} style={`--c:${DAY_TONES[d.data.day].accent}`}>
+            <span class="tick" />
+            <span class="txt">
+              <b>D{pad2(d.data.day)}</b> {formatDate(d.data.date).md}
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+<div class="progress" aria-hidden="true"><span></span></div>
+
+<style>
+  .rail {
+    position: fixed;
+    left: var(--gutter);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s;
+  }
+  :global(body.in-story) .rail {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+  }
+  a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #8a857c;
+    mix-blend-mode: difference;
+  }
+  .tick {
+    width: 14px;
+    height: 1px;
+    background: currentColor;
+    transition: width 0.4s var(--ease-out), background 0.4s;
+  }
+  .txt {
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  a:hover .txt,
+  a.is-active .txt {
+    opacity: 1;
+    transform: none;
+  }
+  a.is-active {
+    color: var(--c);
+    mix-blend-mode: normal;
+  }
+  a.is-active .tick {
+    width: 32px;
+    background: var(--c);
+  }
+
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    z-index: 60;
+  }
+  .progress span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform-origin: left;
+    transform: scaleX(var(--p, 0));
+    background: var(--accent);
+  }
+
+  @media (max-width: 860px) {
+    .rail {
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    ol {
+      grid-auto-flow: column;
+      gap: 8px;
+    }
+    .txt { display: none; }
+    .tick { width: 18px; height: 2px; }
+    a.is-active .tick { width: 30px; }
+  }
+</style>

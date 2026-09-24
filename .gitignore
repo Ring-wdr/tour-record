@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.wrangler/
+.env
+.env.*
+.DS_Store
+# 원본 사진은 R2에 올리고 저장소에는 넣지 않는다
+photos-raw/
+public/vendor/

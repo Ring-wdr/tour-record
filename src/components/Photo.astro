@@ -1,0 +1,109 @@
+---
+import { resolvePhoto, DAY_TONES, type PhotoInput } from '../lib/trip';
+
+interface Props {
+  photo: PhotoInput;
+  day: number;
+  class?: string;
+  /** 표지처럼 라이트박스 없이 배경으로만 쓰는 경우 */
+  static?: boolean;
+  eager?: boolean;
+}
+
+const { photo, day, class: className, static: isStatic = false, eager = false } = Astro.props;
+const p = await resolvePhoto(photo);
+const tone = DAY_TONES[day];
+// 파일 경로별로 조금씩 다른 각도의 그라디언트 — 플레이스홀더끼리 구분되게
+const angle = [...photo.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+---
+
+{
+  p.exists ? (
+    isStatic ? (
+      <img
+        class:list={['photo', className]}
+        src={p.src}
+        alt={p.alt}
+        width={p.w}
+        height={p.h}
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+    ) : (
+      <a
+        class:list={['photo', 'pswp-item', className]}
+        href={p.src}
+        data-pswp-width={p.w}
+        data-pswp-height={p.h}
+        data-caption={p.caption ?? p.alt}
+      >
+        <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+      </a>
+    )
+  ) : (
+    <figure
+      class:list={['photo', 'ph', className]}
+      style={`--a:${angle}deg;--from:${tone.from};--to:${tone.to}`}
+      role="img"
+      aria-label={p.alt}
+    >
+      {!isStatic && <span class="ph-alt">{p.alt}</span>}
+      {import.meta.env.DEV && <span class="ph-path">{p.src}</span>}
+    </figure>
+  )
+}
+
+<style>
+  .photo {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    background: #1a1a1d;
+  }
+  .photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.2s var(--ease-out);
+  }
+  a.photo:hover img {
+    transform: scale(1.04);
+  }
+  img.photo {
+    object-fit: cover;
+  }
+
+  .ph {
+    margin: 0;
+    background:
+      radial-gradient(120% 90% at 20% 110%, rgb(0 0 0 / 0.55), transparent 60%),
+      linear-gradient(var(--a), var(--from), var(--to));
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 14px 16px;
+    min-height: 120px;
+  }
+  .ph::before {
+    /* 산 능선 실루엣 */
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 55%;
+    background: rgb(0 0 0 / 0.28);
+    clip-path: polygon(0 70%, 14% 42%, 26% 58%, 41% 18%, 55% 50%, 66% 34%, 80% 60%, 92% 40%, 100% 55%, 100% 100%, 0 100%);
+  }
+  .ph-alt {
+    position: relative;
+    font-family: var(--serif);
+    font-size: 14px;
+    color: rgb(255 255 255 / 0.85);
+  }
+  .ph-path {
+    position: relative;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgb(255 255 255 / 0.5);
+    word-break: break-all;
+  }
+</style>

@@ -1,0 +1,81 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import Stats from '../components/Stats.astro';
+import DayRail from '../components/DayRail.astro';
+import DayChapter from '../components/DayChapter.astro';
+import AltitudeLine from '../components/AltitudeLine.astro';
+import Outro from '../components/Outro.astro';
+import { getDays, tripStats, dayRoute, DAY_TONES, TRIP } from '../lib/trip';
+
+const days = await getDays();
+const stats = tripStats(days);
+
+// 지도 스크립트에 넘길 최소 데이터
+const mapData = {
+  base: TRIP.base,
+  days: days.map((d) => ({
+    day: d.data.day,
+    accent: DAY_TONES[d.data.day].accent,
+    route: dayRoute(d),
+    stops: d.data.stops.map((s) => ({ id: s.id, name: s.name, coords: s.coords, camera: s.camera })),
+  })),
+};
+---
+
+<Base
+  title={`${TRIP.title} — ${TRIP.subtitle}`}
+  description={`${TRIP.subtitleKo}. 카자흐스탄 알마티 여행 기록 (${TRIP.start} – ${TRIP.end}).`}
+>
+  <Hero cover={days[1]} />
+  <Stats stats={stats} />
+  <DayRail days={days} />
+
+  <div id="map-stage" aria-hidden="true">
+    <div id="map"></div>
+    <div class="map-vignette"></div>
+  </div>
+
+  <main id="story">
+    {days.map((day) => <DayChapter day={day} />)}
+  </main>
+
+  <AltitudeLine days={days} />
+  <Outro />
+
+  <script type="application/json" id="trip-data" set:html={JSON.stringify(mapData)} />
+</Base>
+
+<script>
+  import '../scripts/story';
+  import '../scripts/lightbox';
+</script>
+
+<style>
+  #map-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  :global(body.in-story) #map-stage {
+    opacity: 1;
+  }
+  #map {
+    position: absolute;
+    inset: 0;
+  }
+  .map-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 40% 50%, transparent 45%, rgb(0 0 0 / 0.55)),
+      linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 30%);
+  }
+  #story {
+    position: relative;
+    z-index: 1;
+  }
+</style>

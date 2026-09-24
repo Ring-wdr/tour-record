@@ -1,0 +1,174 @@
+---
+import { DAY_TONES, pad2, type Day } from '../lib/trip';
+
+interface Props {
+  days: Day[];
+}
+const { days } = Astro.props;
+
+const W = 1000;
+const H = 360;
+const PAD = { top: 60, right: 30, bottom: 50, left: 30 };
+const MAX = 3500;
+
+const pts = days.flatMap((d) =>
+  d.data.stops.map((s) => ({ day: d.data.day, name: s.name, elev: s.elevation ?? 0, kind: s.kind })),
+);
+const step = (W - PAD.left - PAD.right) / (pts.length - 1);
+const x = (i: number) => PAD.left + i * step;
+const y = (e: number) => PAD.top + (1 - e / MAX) * (H - PAD.top - PAD.bottom);
+
+const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.elev).toFixed(1)}`).join(' ');
+const area = `${line} L${x(pts.length - 1)},${H - PAD.bottom} L${x(0)},${H - PAD.bottom} Z`;
+
+// 날짜가 바뀌는 지점
+const dayStarts = days.map((d) => ({
+  day: d.data.day,
+  i: pts.findIndex((p) => p.day === d.data.day),
+}));
+
+// 라벨은 자연 명소만 — 겹치지 않도록
+const labeled = pts.map((p, i) => ({ ...p, i })).filter((p) => p.kind === 'nature');
+---
+
+<section class="alt" data-inview>
+  <div class="alt-head reveal">
+    <p class="eyebrow">The Altitude Line</p>
+    <h2>680m에서 3,163m까지</h2>
+    <p>공항에서 시작해 빙하 호수와 곤돌라 정상을 지나, 해발 600m의 사막까지. 일주일 동안 오르내린 높이를 한 줄로 그려봤다.</p>
+  </div>
+
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="여행 기간 방문지의 해발고도 변화">
+    <defs>
+      <linearGradient id="alt-fill" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#f2a65a" stop-opacity="0.45"></stop>
+        <stop offset="1" stop-color="#f2a65a" stop-opacity="0"></stop>
+      </linearGradient>
+    </defs>
+
+    {
+      [1000, 2000, 3000].map((e) => (
+        <g class="grid">
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(e)} y2={y(e)} />
+          <text x={W - PAD.right} y={y(e) - 6} text-anchor="end">
+            {e.toLocaleString('en-US')}m
+          </text>
+        </g>
+      ))
+    }
+
+    {
+      dayStarts.map(({ day, i }) => (
+        <g class="day-sep">
+          <line x1={x(i)} x2={x(i)} y1={PAD.top - 20} y2={H - PAD.bottom} />
+          <text x={x(i) + 4} y={H - PAD.bottom + 20} fill={DAY_TONES[day].accent}>
+            D{pad2(day)}
+          </text>
+        </g>
+      ))
+    }
+
+    <path class="area" d={area} fill="url(#alt-fill)"></path>
+    <path class="line" d={line} pathLength="1"></path>
+
+    {
+      pts.map((p, i) => (
+        <circle class="dot" cx={x(i)} cy={y(p.elev)} r="4" fill={DAY_TONES[p.day].accent} style={`--d:${(i / pts.length) * 2.4}s`} />
+      ))
+    }
+    {
+      labeled.map((p) => (
+        <g class="label" style={`--d:${(p.i / pts.length) * 2.4 + 0.2}s`}>
+          <text x={x(p.i)} y={y(p.elev) - 26} text-anchor="middle" class="l-name">
+            {p.name.split(/ [+·]/)[0]}
+          </text>
+          <text x={x(p.i)} y={y(p.elev) - 12} text-anchor="middle" class="l-elev">
+            {p.elev.toLocaleString('en-US')}
+          </text>
+        </g>
+      ))
+    }
+  </svg>
+</section>
+
+<style>
+  .alt {
+    position: relative;
+    z-index: 2;
+    background: var(--ink);
+    padding: clamp(80px, 14vh, 160px) var(--gutter);
+  }
+  .alt-head {
+    max-width: 640px;
+  }
+  .alt-head h2 {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(28px, 4vw, 48px);
+    margin: 8px 0 12px;
+  }
+  .alt-head p:last-child {
+    font-family: var(--serif);
+    color: var(--film-dim);
+  }
+  svg {
+    width: 100%;
+    height: auto;
+    margin-top: 40px;
+    overflow: visible;
+  }
+  .grid line {
+    stroke: #2a2a2e;
+    stroke-dasharray: 2 4;
+  }
+  .grid text,
+  .day-sep text {
+    font-family: var(--mono);
+    font-size: 11px;
+    fill: #6f6a62;
+  }
+  .day-sep line {
+    stroke: #222226;
+  }
+  .line {
+    fill: none;
+    stroke: #f2a65a;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .area {
+    opacity: 0;
+  }
+  .dot,
+  .label {
+    opacity: 0;
+  }
+  .l-name {
+    font-family: var(--serif);
+    font-size: 13px;
+    fill: var(--film);
+  }
+  .l-elev {
+    font-family: var(--mono);
+    font-size: 10px;
+    fill: #f2a65a;
+  }
+  .alt:global(.is-in) .line {
+    transition: stroke-dashoffset 2.6s var(--ease-out);
+    stroke-dashoffset: 0;
+  }
+  .alt:global(.is-in) .area {
+    transition: opacity 1.5s 1.2s;
+    opacity: 1;
+  }
+  .alt:global(.is-in) .dot,
+  .alt:global(.is-in) .label {
+    transition: opacity 0.6s var(--d);
+    opacity: 1;
+  }
+  @media (max-width: 640px) {
+    .label { display: none; }
+  }
+</style>

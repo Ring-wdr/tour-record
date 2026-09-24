@@ -1,0 +1,32 @@
+{
+  "name": "tour-record",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "copy:worker": "node scripts/copy-maplibre-worker.mjs",
+    "predev": "node scripts/copy-maplibre-worker.mjs",
+    "dev": "astro dev",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "pnpm build && wrangler deploy",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^7.3.4",
+    "maplibre-gl": "^6.11.1",
+    "photoswipe": "^5.4.4",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.137.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}

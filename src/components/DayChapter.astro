@@ -1,0 +1,375 @@
+---
+import { render } from 'astro:content';
+import Photo from './Photo.astro';
+import { DAY_TONES, formatDate, pad2, type Day } from '../lib/trip';
+
+interface Props {
+  day: Day;
+}
+const { day } = Astro.props;
+const d = day.data;
+const tone = DAY_TONES[d.day];
+const { md, weekday } = formatDate(d.date);
+const { Content } = await render(day);
+
+const KIND_LABEL: Record<string, string> = {
+  arrival: 'Arrival',
+  stay: 'Stay',
+  nature: 'Nature',
+  food: 'Food',
+  culture: 'Culture',
+  market: 'Market',
+  departure: 'Departure',
+};
+
+const allPhotos = d.stops.flatMap((s) => s.photos);
+const peak = Math.max(...d.stops.map((s) => s.elevation ?? 0));
+---
+
+<section class="chapter" id={`day-${d.day}`} data-day={d.day} style={`--accent:${tone.accent}`}>
+  {/* 1) 타이틀 카드 — 불투명, 지도는 이 날의 전체 경로로 이동 */}
+  <header class="title-card" data-map-target="day" data-day={d.day}>
+    <div class="title-media">
+      {d.cover && <Photo photo={d.cover} day={d.day} class="title-img" static />}
+    </div>
+    <div class="title-inner reveal">
+      <p class="eyebrow">Day {pad2(d.day)} · {md} {weekday}</p>
+      <h2>
+        <span class="big-num" aria-hidden="true">{pad2(d.day)}</span>
+        <span class="title-ko">{d.title}</span>
+      </h2>
+      <p class="title-en">{d.titleEn}</p>
+      <p class="lede">{d.lede}</p>
+    </div>
+  </header>
+
+  {/* 2) 장소 스텝 — 투명, 뒤의 고정 지도가 보인다 */}
+  <div class="steps">
+    {
+      d.stops.map((s, i) => (
+        <article class="step" data-map-target="stop" data-stop-id={s.id} data-day={d.day}>
+          <div class="card">
+            <div class="card-head">
+              <span class="eyebrow">
+                {pad2(i + 1)} / {pad2(d.stops.length)} · {KIND_LABEL[s.kind]}
+                {s.time && <> · {s.time}</>}
+              </span>
+              {import.meta.env.DEV && s.approx && <span class="approx">좌표 대략치</span>}
+            </div>
+            <h3>{s.name}</h3>
+            <p class="name-en">{s.nameEn}</p>
+            <p class="note">{s.note}</p>
+            {s.elevation && (
+              <p class="elev">
+                <span>▲</span> {s.elevation.toLocaleString('en-US')} m
+              </p>
+            )}
+            {s.photos.length > 0 && (
+              <div class:list={['thumbs', 'pswp-gallery', `n${Math.min(s.photos.length, 3)}`]}>
+                {s.photos.slice(0, 3).map((p) => (
+                  <Photo photo={p} day={d.day} class="thumb" />
+                ))}
+              </div>
+            )}
+          </div>
+        </article>
+      ))
+    }
+  </div>
+
+  {/* 3) 여행 일기 스프레드 — 종이 질감의 매거진 페이지 */}
+  <section class="journal" aria-label={`Day ${d.day} 일기`}>
+    <div class="journal-text reveal">
+      <p class="journal-date">
+        <span>{md}</span>
+        <span>{weekday}</span>
+      </p>
+      <div class="memo">
+        <p>Day {d.day} 메모</p>
+        <p>이동 ~{d.driveKm}km</p>
+        <p>최고 {peak.toLocaleString('en-US')}m</p>
+      </div>
+      <div class="prose">
+        <Content />
+      </div>
+    </div>
+    {
+      allPhotos.length > 0 && (
+        <div class="mosaic pswp-gallery">
+          {allPhotos.map((p, i) => (
+            <Photo photo={p} day={d.day} class={`tile t${i % 5}`} />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</section>
+
+<style>
+  .chapter {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- Title card ---------- */
+  .title-card {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    align-items: end;
+    overflow: hidden;
+    background: var(--ink);
+    padding: 0 var(--gutter) clamp(48px, 10vh, 120px);
+  }
+  .title-media {
+    position: absolute;
+    inset: 0;
+  }
+  .title-media :global(.title-img) {
+    width: 100%;
+    height: 100%;
+  }
+  .title-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.85) 5%, rgb(0 0 0 / 0.1) 60%, rgb(0 0 0 / 0.4));
+  }
+  .title-inner {
+    position: relative;
+    max-width: 980px;
+  }
+  .title-inner .eyebrow {
+    color: var(--accent);
+  }
+  h2 {
+    margin: 12px 0 0;
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(12px, 2vw, 28px);
+    flex-wrap: wrap;
+  }
+  .big-num {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    font-style: italic;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(96px, 18vw, 240px);
+    line-height: 0.78;
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--accent);
+  }
+  .title-ko {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(30px, 4.6vw, 64px);
+    line-height: 1.15;
+    padding-bottom: 0.1em;
+  }
+  .title-en {
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(18px, 2vw, 26px);
+    margin: 8px 0 0;
+    color: #d9d3c8;
+  }
+  .lede {
+    font-family: var(--serif);
+    max-width: 38em;
+    color: #cfc9be;
+    margin: 20px 0 0;
+  }
+
+  /* ---------- Steps over map ---------- */
+  .steps {
+    position: relative;
+    pointer-events: none;
+  }
+  .step {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12vh var(--gutter);
+  }
+  .card {
+    pointer-events: auto;
+    width: min(420px, 100%);
+    background: rgb(12 12 14 / 0.78);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-left: 3px solid var(--accent);
+    padding: 26px 26px 22px;
+    opacity: 0.35;
+    transform: translateY(24px) scale(0.98);
+    transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+  }
+  .step.is-active .card {
+    opacity: 1;
+    transform: none;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .approx {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border: 1px dashed #d9a441;
+    color: #d9a441;
+  }
+  h3 {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 28px;
+    line-height: 1.25;
+    margin: 10px 0 2px;
+  }
+  .name-en {
+    font-family: var(--serif-display);
+    font-style: italic;
+    color: var(--film-dim);
+    margin: 0;
+  }
+  .note {
+    font-family: var(--serif);
+    font-size: 15px;
+    color: #d8d2c7;
+    margin: 14px 0 0;
+  }
+  .elev {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin: 12px 0 0;
+  }
+  .thumbs {
+    display: grid;
+    gap: 4px;
+    margin-top: 18px;
+  }
+  .thumbs.n2 { grid-template-columns: 1fr 1fr; }
+  .thumbs.n3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+  .thumbs.n3 :global(.thumb:first-child) { grid-row: span 2; }
+  .thumbs :global(.thumb) {
+    aspect-ratio: 4 / 3;
+    height: 100%;
+    min-height: 0;
+  }
+  .thumbs.n3 :global(.thumb:first-child) { aspect-ratio: auto; }
+  .thumbs :global(.thumb .ph-alt) { font-size: 12px; }
+
+  /* ---------- Journal spread ---------- */
+  .journal {
+    position: relative;
+    background: var(--paper);
+    color: var(--paper-ink);
+    display: grid;
+    grid-template-columns: minmax(280px, 5fr) 7fr;
+    gap: clamp(32px, 5vw, 80px);
+    padding: clamp(72px, 12vh, 140px) var(--gutter);
+  }
+  .journal-text {
+    position: sticky;
+    top: 10vh;
+    align-self: start;
+  }
+  .journal-date {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0;
+    font-family: var(--serif-display);
+    font-variation-settings: 'opsz' 144;
+    border-bottom: 1px solid var(--paper-ink);
+    padding-bottom: 8px;
+  }
+  .journal-date span:first-child {
+    font-size: 56px;
+    font-weight: 300;
+    line-height: 1;
+  }
+  .journal-date span:last-child {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+  .memo {
+    float: right;
+    margin: 20px 0 12px 20px;
+    padding: 14px 18px 12px;
+    background: #fbf5d8;
+    box-shadow: 0 8px 20px rgb(0 0 0 / 0.12);
+    transform: rotate(2.5deg);
+    font-family: var(--hand);
+    font-size: 22px;
+    line-height: 1.2;
+    color: #3a3122;
+    position: relative;
+  }
+  .memo::before {
+    /* 마스킹 테이프 */
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 64px;
+    height: 20px;
+    transform: translateX(-50%) rotate(-4deg);
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .memo p { margin: 0; }
+  .prose {
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.95;
+    margin-top: 20px;
+  }
+  .prose :global(p:first-child::first-letter) {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    float: left;
+    font-size: 3.4em;
+    line-height: 0.9;
+    padding: 0.08em 0.12em 0 0;
+    color: color-mix(in srgb, var(--accent) 70%, var(--paper-ink));
+  }
+  .mosaic {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-auto-rows: clamp(90px, 11vw, 150px);
+    gap: 8px;
+  }
+  .mosaic :global(.tile) { grid-column: span 3; grid-row: span 2; }
+  .mosaic :global(.t0) { grid-column: span 6; grid-row: span 3; }
+  .mosaic :global(.t1) { grid-column: span 2; grid-row: span 2; }
+  .mosaic :global(.t2) { grid-column: span 4; grid-row: span 2; }
+  .mosaic :global(.t3) { grid-column: span 3; grid-row: span 2; }
+  .mosaic :global(.t4) { grid-column: span 3; grid-row: span 2; }
+  .mosaic :global(.tile:last-child:nth-child(odd)) { grid-column: span 6; }
+
+  /* 왼쪽 날짜 레일과 겹치지 않게 */
+  @media (min-width: 861px) {
+    .title-card,
+    .journal {
+      padding-left: calc(var(--gutter) + 120px);
+    }
+  }
+
+  @media (max-width: 860px) {
+    .step {
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 6vh;
+    }
+    .card { padding: 20px; }
+    h3 { font-size: 24px; }
+    .journal { grid-template-columns: 1fr; }
+    .journal-text { position: static; }
+  }
+</style>

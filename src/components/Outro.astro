@@ -1,0 +1,38 @@
+---
+import { TRIP } from '../lib/trip';
+---
+
+<footer class="outro">
+  <p class="eyebrow reveal">Fin.</p>
+  <p class="line reveal">다음엔 겨울의 톈산으로.</p>
+  <div class="credits reveal">
+    <span class="eyebrow">{TRIP.title} · {TRIP.start} — {TRIP.end}</span>
+    <span class="eyebrow">Photographed & written by — 이름</span>
+    <span class="eyebrow">Map © OpenStreetMap contributors · OpenFreeMap</span>
+  </div>
+</footer>
+
+<style>
+  .outro {
+    position: relative;
+    z-index: 2;
+    background: #000;
+    min-height: 80svh;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    gap: 24px;
+    padding: 80px var(--gutter);
+  }
+  .line {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(28px, 5vw, 64px);
+    margin: 0;
+  }
+  .credits {
+    display: grid;
+    gap: 6px;
+    margin-top: 40px;
+  }
+</style>

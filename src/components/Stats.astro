@@ -1,0 +1,79 @@
+---
+interface Props {
+  stats: { days: number; km: number; places: number; maxElevation: number; photos: number };
+}
+const { stats } = Astro.props;
+
+const items = [
+  { value: stats.days, unit: 'days', label: '여행한 날' },
+  { value: stats.km, unit: 'km', label: '달린 거리', prefix: '~' },
+  { value: stats.maxElevation, unit: 'm', label: '가장 높았던 곳' },
+  { value: stats.places, unit: 'places', label: '머문 장소' },
+];
+---
+
+<section id="stats" class="stats">
+  <p class="eyebrow reveal">The Trip in Numbers</p>
+  <ul>
+    {
+      items.map((it, i) => (
+        <li class="reveal" style={`transition-delay:${i * 0.12}s`}>
+          <span class="num">
+            {it.prefix}
+            <span data-count={it.value}>{it.value.toLocaleString('en-US')}</span>
+          </span>
+          <span class="unit">{it.unit}</span>
+          <span class="label">{it.label}</span>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .stats {
+    position: relative;
+    z-index: 2;
+    background: var(--ink);
+    padding: clamp(80px, 14vh, 160px) var(--gutter);
+    border-bottom: 1px solid #222;
+  }
+  ul {
+    list-style: none;
+    margin: 32px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  li {
+    display: grid;
+    border-top: 1px solid #333;
+    padding-top: 20px;
+  }
+  .num {
+    font-family: var(--serif-display);
+    font-weight: 300;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(48px, 7vw, 104px);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .unit {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 8px;
+  }
+  .label {
+    font-family: var(--serif);
+    color: var(--film-dim);
+    font-size: 14px;
+  }
+  @media (max-width: 760px) {
+    ul { grid-template-columns: repeat(2, 1fr); row-gap: 40px; }
+  }
+</style>

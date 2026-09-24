@@ -44,7 +44,7 @@
 ## 확인이 필요한 데이터 (TODO)
 - 각 날짜의 일기 본문, 식당 이름(Smile 외), 카투타우 식별(사진상 붉은 화산암 지대)
 - `driveKm`은 사진 GPS 직선거리 × 1.25 추정치
-- `astro.config.mjs`의 `site`
+- 배포 주소: https://almaty-2026.akswnd55.workers.dev (커스텀 도메인을 붙이면 `astro.config.mjs`의 `site`도 교체)
 - 영상 115개(mp4)는 아직 사용하지 않음
 
 ## 로드맵

@@ -10,10 +10,11 @@
     "prebuild": "node scripts/copy-maplibre-worker.mjs",
     "build": "astro build",
     "preview": "astro preview",
-    "deploy": "pnpm build && wrangler deploy",
     "astro": "astro",
     "photos": "node scripts/import-photos.mjs",
-    "tracks": "node scripts/build-tracks.mjs"
+    "tracks": "node scripts/build-tracks.mjs",
+    "cf:preview": "pnpm build && wrangler dev",
+    "cf:deploy": "pnpm build && wrangler deploy"
   },
   "dependencies": {
     "astro": "^7.3.4",

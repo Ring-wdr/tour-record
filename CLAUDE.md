@@ -7,7 +7,7 @@
 - Astro 7 (정적 빌드, `output: 'static'`), 한 페이지 스크롤리텔링 (`src/pages/index.astro`)
 - MapLibre GL 6 + OpenFreeMap `dark` 스타일 (키 없음) + AWS terrarium DEM (3D 지형/음영)
 - PhotoSwipe 5 (라이트박스), sharp (빌드 시 사진 크기 측정)
-- 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`, `pnpm deploy`)
+- 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`). `pnpm cf:preview`(로컬 확인) → `pnpm cf:deploy`. `pnpm deploy`는 pnpm 내장 명령과 겹치므로 쓰지 않는다
 - 패키지 매니저: pnpm
 
 ## 구조
@@ -37,7 +37,7 @@
 - 문구에 "톈산" 지명은 쓰지 않는다
 - 사진 선정은 dayXX.md의 `photos`/`cover`가 기준. 경로는 `/photos/dayXX/<원본파일명>.jpg`
 - `pnpm photos` → md에 적힌 사진만 원본에서 찾아 `public/photos/dayXX/`에 `<이름>.jpg`(2400px, 라이트박스) + `<이름>-md.webp`(1200px, 카드)로 변환, EXIF 전부 제거
-- 변환된 사진은 git에 넣지 않는다 (`.gitignore`). 배포는 로컬 빌드(`pnpm deploy`) 기준
+- 변환된 사진은 git에 넣지 않는다 (`.gitignore`). 배포는 사진이 있는 이 PC의 로컬 빌드(`pnpm cf:deploy`) 기준 — Git 연동 자동 배포를 켜면 사진 없이 플레이스홀더로 배포된다
 - `pnpm tracks` → 원본 사진 전체의 GPS를 실제 시각(EXIF 오프셋 반영) 순으로 이어 2~7일차 경로 생성, 시속 180km 초과 점은 GPS 오류로 제외. 1일차는 장소를 잇는 비행 경로
 - `.scratch/` (git 제외)에 EXIF 스캔(`scan.json`)·밀착 인화 스크립트가 있다: `node .scratch/sheet.mjs <날짜> <시작> <끝> <이름> [최대장수]`
 

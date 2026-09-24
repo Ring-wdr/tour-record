@@ -1,0 +1,7 @@
+# 해시가 붙은 번들과 사진은 바뀌지 않으므로 길게 캐시
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+/photos/*
+  Cache-Control: public, max-age=2592000
+/vendor/*
+  Cache-Control: public, max-age=2592000

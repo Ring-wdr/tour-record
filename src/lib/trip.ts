@@ -37,7 +37,7 @@ const photoSizes = Object.assign({}, ...Object.values(SIZES)) as Record<string, 
 /** 모든 여행 — 최근 여행부터 */
 export async function getTrips(): Promise<Trip[]> {
   const [trips, days] = await Promise.all([getCollection('trips'), getCollection('days')]);
-  const result = trips.map((t) => {
+  const result = trips.filter((t) => import.meta.env.DEV || !t.data.draft).map((t) => {
     const trip: Trip = {
       slug: t.id,
       data: t.data,
@@ -75,19 +75,20 @@ export function checkTrip(trip: Trip) {
  * - toBase: 숙소로 돌아온 날 → 뒤에 숙소 좌표
  */
 export function dayRoute(day: Day, prev: Day | undefined, base: LngLat, track?: LngLat[]): LngLat[] {
-  // 사진 GPS 궤적(pnpm tracks)이 있으면 그걸 쓰고, 끝의 비행 구간(인천 귀국 등)만 이어 붙인다
+  // 사진 GPS 궤적(pnpm tracks)이 있으면 그걸 쓰고, 앞뒤의 비행 구간(인천 출발·귀국)만 이어 붙인다
   if (track?.length) {
-    const tail: LngLat[] = [];
-    for (const s of [...day.data.stops].reverse()) {
-      if (s.kind !== 'flight') break;
-      tail.unshift(s.coords);
-    }
+    const flights = (stops: Stop[]) => {
+      const i = stops.findIndex((s) => s.kind !== 'flight');
+      return stops.slice(0, i < 0 ? stops.length : i).map((s) => s.coords);
+    };
+    const head = flights(day.data.stops);
+    const tail = flights([...day.data.stops].reverse()).reverse();
     // 숙소 주변은 프라이버시 구역으로 잘려 있으므로, 멀리서 돌아온 날은 시내 중심까지 이어 준다
     const last = track.at(-1)!;
     const kmPerLng = 111 * Math.cos((base[1] * Math.PI) / 180);
     const farFromBase = Math.hypot((last[0] - base[0]) * kmPerLng, (last[1] - base[1]) * 111) > 5; // km
     const home: LngLat[] = day.data.toBase && farFromBase ? [base] : [];
-    return [...track, ...home, ...tail];
+    return [...head, ...track, ...home, ...tail];
   }
   const pts = day.data.stops.map((s) => s.coords);
   const start = day.data.fromBase ? [base] : prev ? [prev.data.stops.at(-1)!.coords] : [];

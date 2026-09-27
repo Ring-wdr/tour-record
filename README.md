@@ -1,14 +1,20 @@
-# ALMATY — Seven Days in Kazakhstan
+# Travel Records
 
-카자흐스탄 알마티 여행(2026.09.11 – 09.17)을 스크롤하며 따라가는 인터랙티브 여행 기록.
+다녀온 여행을 하나씩 스크롤하며 따라가는 인터랙티브 여행 기록.
 
-**🔗 https://almaty-2026.akswnd55.workers.dev**
+**🔗 https://tour-record.akswnd55.workers.dev**
+
+| 여행 | 기간 |
+|---|---|
+| [ALMATY — Seven Days in Kazakhstan](https://tour-record.akswnd55.workers.dev/trips/almaty-2026/) | 2026.09.11 – 09.17 |
+
+여행 페이지마다 같은 구성:
 
 - **시네마틱 첫 화면** — 레터박스가 열리며 떠오르는 타이틀
 - **스크롤리텔링 지도** — 장소 카드를 넘길 때마다 지도가 그곳으로 날아가고, 그날의 실제 이동 경로가 그려진다. 자연 명소는 3D 지형, 시내는 평면 지도
 - **매거진 스타일 여행 일기** — 날짜별 일기, 손글씨 메모, 사진 모자이크와 라이트박스
-- **고도 그래프** — 일주일 동안 오르내린 해발 고도(최고 3,200m 탈가르 패스)
-- **카자흐스탄 스포트라이트** — 마지막 날 개요에서 국경 밖을 어둡게 가린다
+- **고도 그래프** — 여행 동안 오르내린 해발 고도 (알마티: 최고 3,200m 탈가르 패스)
+- **나라 스포트라이트** — 지정한 날의 개요에서 국경 밖을 어둡게 가린다
 
 ## 기술 스택
 
@@ -56,6 +62,7 @@ pnpm dev          # http://localhost:4321
 사진·경로 명령은 모든 여행을 처리하고, `-- --trip <slug>`를 붙이면 그 여행만 처리한다. 원본 사진 폴더와 숙소 프라이버시 구역은 git에서 제외된 `trips.local.json`에 여행별로 적는다.
 | `pnpm cf:preview` | 빌드 후 Cloudflare 런타임으로 로컬 확인 |
 | `pnpm cf:deploy` | 빌드 후 Cloudflare에 배포 |
+| `pnpm cf:deploy:legacy` | 옛 주소(almaty-2026.…workers.dev)의 301 리다이렉트 Worker 배포 |
 
 `pnpm deploy`는 pnpm 내장 명령과 겹치므로 `cf:deploy`를 쓴다.
 

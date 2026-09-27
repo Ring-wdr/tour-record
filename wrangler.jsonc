@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "almaty-2026",
+  // 여러 여행을 담는 사이트 — https://tour-record.akswnd55.workers.dev
+  "name": "tour-record",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-01",
   "assets": {
@@ -10,5 +11,6 @@
     // 사진은 dist에 넣지 않고(.assetsignore) R2에서 Worker가 서빙
     "run_worker_first": ["/photos/*"]
   },
-  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "almaty-2026-photos" }]
+  // 키 = URL 경로 (photos/<slug>/dayXX/...). pnpm photos:upload가 이 버킷 이름을 읽는다
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "tour-record-photos" }]
 }

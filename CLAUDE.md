@@ -8,7 +8,7 @@
 - Astro 7 (정적 빌드, `output: 'static'`). 여행 페이지는 `src/pages/trips/[slug]/index.astro` 하나가 `getStaticPaths`로 여행마다 생성. 여행 추가 = 재빌드·재배포
 - MapLibre GL 6 + OpenFreeMap `dark` 스타일 (키 없음) + AWS terrarium DEM (3D 지형/음영)
 - PhotoSwipe 5 (라이트박스), sharp (빌드 시 사진 크기 측정)
-- 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`) + R2(`almaty-2026-photos`). `worker/index.ts`가 `/photos/*`만 R2에서 서빙하고 나머지는 정적 에셋. 사진은 `public/.assetsignore`로 정적 에셋에서 제외. `pnpm cf:preview`(로컬 확인) → `pnpm cf:deploy`. `pnpm deploy`는 pnpm 내장 명령과 겹치므로 쓰지 않는다
+- 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`) + R2(`tour-record-photos`, 키 = URL 경로). `worker/index.ts`가 `/photos/*`만 R2에서 서빙하고 나머지는 정적 에셋. 사진은 `public/.assetsignore`로 정적 에셋에서 제외. `pnpm cf:preview`(로컬 확인) → `pnpm cf:deploy`. `pnpm deploy`는 pnpm 내장 명령과 겹치므로 쓰지 않는다
 - 패키지 매니저: pnpm
 
 ## 구조
@@ -58,13 +58,14 @@
 - 식당 이름(Smile·Navat 외), 카투타우 식별(사진상 붉은 화산암 지대)
 - 4일차 Navat 아점·아르바트 거리는 일기에만 있고 지도 장소로는 아직 없음 (사진 09:30~10:50, 12:20~14:00 묶음)
 - `driveKm`은 사진 GPS 직선거리 × 1.25 추정치
-- 배포 주소: https://almaty-2026.akswnd55.workers.dev (커스텀 도메인을 붙이면 `astro.config.mjs`의 `site`도 교체)
+- 배포 주소: https://tour-record.akswnd55.workers.dev (커스텀 도메인을 붙이면 `astro.config.mjs`의 `site`, `worker/legacy-redirect.ts`의 TARGET도 교체)
+- 옛 주소 https://almaty-2026.akswnd55.workers.dev 는 `worker/legacy-redirect.ts`(`wrangler.legacy.jsonc`, `pnpm cf:deploy:legacy`)가 새 주소로 301. 옛 버킷 `almaty-2026-photos`는 더 이상 쓰지 않음(삭제 전 보관 중)
 - 영상 115개(mp4)는 아직 사용하지 않음
 
 ## 로드맵 — 여러 여행
 1. ~~여행 단위 폴더 + `/trips/[slug]/` 라우트 + 스키마/교차 검증~~
 2. ~~파이프라인 스크립트 `--trip <slug>`, 사진 URL·R2 키에 slug 접두사(`/photos/<slug>/dayXX/...`), 여행별 OG 이미지~~
-3. Cloudflare 이전: Worker 이름 변경(almaty-2026 → 범용), 새 R2 버킷, 옛 주소는 301 리다이렉트 Worker
+3. ~~Cloudflare 이전: Worker `tour-record`, R2 `tour-record-photos`, 옛 주소는 301 리다이렉트 Worker~~
 4. 메인 목록 페이지 디자인 (지금 `/`는 최소 목록)
 5. 관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장
 

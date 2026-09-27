@@ -15,7 +15,8 @@
     "tracks": "node scripts/build-tracks.mjs",
     "cf:preview": "pnpm build && wrangler dev",
     "cf:deploy": "pnpm build && wrangler deploy",
-    "photos:upload": "node scripts/upload-photos.mjs"
+    "photos:upload": "node scripts/upload-photos.mjs",
+    "cf:deploy:legacy": "wrangler deploy -c wrangler.legacy.jsonc"
   },
   "dependencies": {
     "astro": "^7.3.4",

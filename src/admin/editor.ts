@@ -85,18 +85,23 @@ function setAt(path: string, value: unknown) {
   obj[last] = value;
 }
 
-/** 시작일~끝일에 맞춰 날짜 수를 늘리고 줄인다 (줄일 때 뒤쪽 날은 초안에서 사라진다) */
+/** 날짜 입력칸이 허용하는 범위 — 네이티브 datepicker의 min/max */
+const DATE_MIN = '1990-01-01';
+const DATE_MAX = '2099-12-31';
+const validDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && s >= DATE_MIN && s <= DATE_MAX && !Number.isNaN(Date.parse(s));
+
+/** 시작일~끝일의 날짜 수 (최대 60) */
 function dayCount() {
-  const a = Date.parse(state.start);
-  const b = Date.parse(state.end);
-  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return 0;
-  return Math.min(60, Math.round((b - a) / DAY_MS) + 1);
+  if (!validDate(state.start) || !validDate(state.end) || state.end < state.start) return 0;
+  return Math.min(60, Math.round((Date.parse(state.end) - Date.parse(state.start)) / DAY_MS) + 1);
 }
+/** 기간이 늘면 날을 추가한다. 줄어도 지우지 않고 숨기기만 한다 (기간을 잘못 골랐다 되돌려도 입력이 남도록) */
 function syncDays() {
   const n = dayCount();
   while (state.days.length < n) state.days.push(blankDay(state.days.length));
-  if (state.days.length > n) state.days.length = n;
 }
+/** 화면에 보이고 저장되는 날들 */
+const visibleDays = () => state.days.slice(0, dayCount());
 function dayLabel(i: number) {
   const t = Date.parse(state.start) + i * DAY_MS;
   if (Number.isNaN(t)) return '';
@@ -216,9 +221,41 @@ function dayHtml(i: number) {
   </section>`;
 }
 
-function render() {
+const endHint = (n: number) => (n ? `${n}일 — 아래에 날짜가 만들어진다` : '달력에서 고른다');
+
+/** 날짜 입력칸 — 네이티브 datepicker로만 고른다 (직접 타이핑하면 "0002-…" 같은 중간값이 들어가므로 막는다) */
+function dateField(k: 'start' | 'end', label: string, hint: string) {
+  const min = k === 'end' && validDate(state.start) ? state.start : DATE_MIN;
+  return `<label class="ed-field" data-f="${k}"><span>${label} <b>*</b></span>
+    <input data-k="${k}" type="date" value="${esc(getAt(k))}" min="${min}" max="${DATE_MAX}">
+    <em data-hint="${k}">${esc(hint)}</em></label>`;
+}
+
+/** 날짜별 입력칸만 다시 그린다 — 위쪽 여행 정보 입력칸(포커스 중인 날짜 칸 포함)은 건드리지 않는다 */
+function renderDays() {
+  const n = dayCount();
+  document.getElementById('days')!.innerHTML = n
+    ? visibleDays().map((_, i) => dayHtml(i)).join('')
+    : '<p class="ed-block">시작일과 끝일을 고르면 날짜별 입력칸이 생긴다.</p>';
+  syncMarkers();
+}
+
+/** 기간이 바뀌면: 날짜 수 맞추기, 끝일 안내·최소값, 표지 날 최대값, 날짜 목록 */
+function onPeriodChange() {
+  syncDays();
+  const n = dayCount();
+  const hint = document.querySelector('[data-hint="end"]');
+  if (hint) hint.textContent = endHint(n);
+  const end = document.querySelector<HTMLInputElement>('[data-k="end"]');
+  if (end) end.min = validDate(state.start) ? state.start : DATE_MIN;
+  const hero = document.querySelector<HTMLInputElement>('[data-k="heroDay"]');
+  if (hero) hero.max = String(Math.max(n, 1));
+  renderDays();
+}
+
+function renderAll() {
   const geo = meta.geo.map((g) => `<option value="${g}"${state.spotlight === g ? ' selected' : ''}>${g}</option>`).join('');
-  const n = state.days.length;
+  const n = dayCount();
   document.getElementById('editor')!.innerHTML = `
   <div class="ed-block"><h2>여행 정보 <small>첫 화면 · 숫자 · 엔딩</small></h2>
     <div class="ed-grid">
@@ -227,8 +264,8 @@ function render() {
       ${field('subtitle', { label: '영문 부제', req: true, placeholder: 'Seven Days in Kazakhstan' })}
       ${field('subtitleKo', { label: '한글 부제', req: true, placeholder: '카자흐스탄에서 보낸 7일' })}
       ${field('country', { label: '나라', req: true, placeholder: 'Kazakhstan' })}
-      ${field('start', { label: '시작일', type: 'date', req: true })}
-      ${field('end', { label: '끝일', type: 'date', req: true, hint: n ? `${n}일 — 아래에 날짜가 만들어진다` : '' })}
+      ${dateField('start', '시작일', '달력에서 고른다')}
+      ${dateField('end', '끝일', endHint(n))}
       ${field('heroDay', { label: '첫 화면 표지로 쓸 날', type: 'number', attrs: `min="1" max="${Math.max(n, 1)}"` })}
       ${field('description', { label: '설명 (검색·링크 미리보기)', type: 'textarea', wide: true, req: true, attrs: '2' })}
     </div>
@@ -246,7 +283,7 @@ function render() {
     </div>
   </div>
 
-  ${n ? state.days.map((_, i) => dayHtml(i)).join('') : '<p class="ed-block">시작일과 끝일을 넣으면 날짜별 입력칸이 생긴다.</p>'}
+  <div id="days"></div>
 
   <div class="ed-block"><h2>고도 그래프 <small>the altitude line</small></h2>
     <div class="ed-grid">${field('altitudeNote', { label: '설명 문구', type: 'textarea', wide: true, attrs: '2' })}</div>
@@ -263,7 +300,7 @@ function render() {
     <span class="status" id="status"></span>
     <button type="submit" class="btn primary" id="submit">여행 만들기</button>
   </div>`;
-  syncMarkers();
+  renderDays();
 }
 
 /* ------------------------------------------------------------------ */
@@ -315,7 +352,7 @@ function syncMarkers() {
   };
   add(state.baseLng, state.baseLat, '#ffffff', '공개 숙소 좌표');
   add(state.hotelLng, state.hotelLat, '#ff6b4a', '실제 숙소 (비공개)');
-  state.days.forEach((d, i) => d.stops.forEach((s, j) => add(s.lng, s.lat, d.accent, `D${i + 1} ${j + 1}. ${s.name}`)));
+  visibleDays().forEach((d, i) => d.stops.forEach((s, j) => add(s.lng, s.lat, d.accent, `D${i + 1} ${j + 1}. ${s.name}`)));
 }
 
 /* ------------------------------------------------------------------ */
@@ -327,14 +364,11 @@ const form = document.getElementById('editor') as HTMLFormElement;
 form.addEventListener('input', (e) => {
   const el = e.target as HTMLInputElement;
   const k = el.dataset.k;
-  if (!k) return;
+  if (!k || el.type === 'date') return; // 날짜는 change(달력에서 고른 뒤)에서만
   setAt(k, el.type === 'checkbox' ? el.checked : el.value);
   el.closest('.has-issue')?.classList.remove('has-issue');
   saveDraft();
-  if (k === 'start' || k === 'end') {
-    syncDays();
-    render();
-  } else if (/(Lng|Lat|\.lng|\.lat)$/.test(k)) syncMarkers();
+  if (/(Lng|Lat|\.lng|\.lat)$/.test(k)) syncMarkers();
   else if (/\.nameEn$/.test(k)) {
     // id placeholder(자동 id 미리보기)를 영문 이름에 맞춰 갱신
     const [, i, j] = k.match(/^days\.(\d+)\.stops\.(\d+)\./)!.map(Number);
@@ -342,6 +376,40 @@ form.addEventListener('input', (e) => {
     if (idInput) idInput.placeholder = stopIds()[i][j];
   }
   else if (/\.accent$/.test(k)) (el.closest('.ed-day') as HTMLElement)?.style.setProperty('--accent', el.value);
+});
+
+form.addEventListener('change', (e) => {
+  const el = e.target as HTMLInputElement;
+  const k = el.dataset.k;
+  if (el.type !== 'date' || (k !== 'start' && k !== 'end')) return;
+  // 범위 밖이거나 반쯤 지운 값은 받지 않고 이전 값으로 되돌린다
+  if (el.value && !validDate(el.value)) {
+    el.value = state[k];
+    return;
+  }
+  state[k] = el.value;
+  el.closest('.has-issue')?.classList.remove('has-issue');
+  saveDraft();
+  onPeriodChange();
+});
+
+// 날짜 칸: 클릭하면 달력을 열고, 숫자 타이핑은 막는다 (Tab·Esc·지우기만 허용)
+const openPicker = (el: HTMLInputElement) => {
+  try {
+    el.showPicker();
+  } catch {}
+};
+form.addEventListener('click', (e) => {
+  const el = e.target as HTMLInputElement;
+  if (el.type === 'date') openPicker(el);
+});
+form.addEventListener('keydown', (e) => {
+  const el = e.target as HTMLInputElement;
+  if (el.type !== 'date') return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    openPicker(el);
+  } else if (!['Tab', 'Escape', 'Backspace', 'Delete'].includes(e.key)) e.preventDefault();
 });
 
 document.addEventListener('click', (e) => {
@@ -370,12 +438,14 @@ document.addEventListener('click', (e) => {
       if (!confirm('입력한 초안을 모두 지울까요?')) return;
       state = blankState();
       document.getElementById('issues')!.hidden = true;
-      break;
+      saveDraft();
+      renderAll();
+      return;
     default:
       return;
   }
   saveDraft();
-  render();
+  renderDays();
 });
 
 /* ------------------------------------------------------------------ */
@@ -392,7 +462,7 @@ const photoSrc = (s: string, i: number) =>
 /** 장소 id — 비어 있으면 영문 이름에서 만든다. 초안에는 저장하지 않고(이름을 고치면 따라 바뀌게) 입력칸 placeholder로만 보인다 */
 function stopIds(): string[][] {
   const used = new Set<string>();
-  return state.days.map((d, i) =>
+  return visibleDays().map((d, i) =>
     d.stops.map((s, j) => {
       let id = s.id.trim();
       if (!id) {
@@ -429,7 +499,7 @@ function payload() {
       },
       altitudeNote: state.altitudeNote || undefined,
     },
-    days: state.days.map((d, i) => ({
+    days: visibleDays().map((d, i) => ({
       data: {
         title: d.title,
         titleEn: d.titleEn,
@@ -588,5 +658,7 @@ function showDone(slug: string, files: string[]) {
 const meta: { trips: string[]; geo: string[]; kinds: string[] } = await fetch('/api/admin/meta')
   .then((r) => r.json())
   .catch(() => ({ trips: [], geo: [], kinds: [] }));
+// 옛 초안의 잘못된 날짜(직접 타이핑한 "0002-…" 등)는 비운다
+for (const k of ['start', 'end'] as const) if (state[k] && !validDate(state[k])) state[k] = '';
 syncDays();
-render();
+renderAll();

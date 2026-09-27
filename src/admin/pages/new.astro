@@ -156,21 +156,26 @@ import AdminLayout from '../AdminLayout.astro';
   .ed-sub > h3 {
     font-size: 14px;
   }
+  /* 칸마다 [라벨 → 입력칸 → 안내] 순서로 위에서부터 쌓는다. 같은 줄의 칸은 위쪽을 맞추고,
+     안내 문구 유무와 상관없이 입력칸 높이·위치가 같도록 늘이지 않는다 */
   .ed-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px 14px;
+    gap: 18px 16px;
+    align-items: start;
   }
   .ed-grid .wide {
     grid-column: 1 / -1;
   }
   .ed-field {
     display: grid;
-    gap: 4px;
+    align-content: start;
+    gap: 6px;
     min-width: 0;
   }
   .ed-field > span {
     font-size: 12px;
+    line-height: 18px;
     color: var(--film-dim);
   }
   .ed-field > span b {
@@ -180,21 +185,38 @@ import AdminLayout from '../AdminLayout.astro';
   .ed-field em {
     font-style: normal;
     font-size: 11px;
+    line-height: 1.5;
     color: #6f6a62;
   }
   .editor input,
   .editor select,
   .editor textarea {
     width: 100%;
-    padding: 7px 9px;
+    margin: 0;
+    padding: 0 10px;
     background: #0b0b0d;
     border: 1px solid #333;
     color: var(--film);
     font: 14px var(--sans);
   }
+  /* 한 줄 입력칸은 모두 같은 높이 */
+  .editor input,
+  .editor select {
+    height: 38px;
+  }
   .editor textarea {
+    padding: 8px 10px;
     resize: vertical;
     line-height: 1.6;
+  }
+  .editor input[type='date'] {
+    font-family: var(--mono);
+    font-size: 13px;
+    color-scheme: dark;
+    cursor: pointer;
+  }
+  .editor input[type='date']::-webkit-calendar-picker-indicator {
+    cursor: pointer;
   }
   .editor textarea.mono,
   .editor input.mono {
@@ -208,17 +230,34 @@ import AdminLayout from '../AdminLayout.astro';
     border-color: var(--accent);
   }
   .editor input[type='color'] {
-    padding: 2px;
-    height: 34px;
+    padding: 3px;
+    cursor: pointer;
   }
   .editor input[type='checkbox'] {
-    width: auto;
+    width: 16px;
+    height: 16px;
+    flex: none;
+    accent-color: var(--accent);
   }
+  /* 체크박스 칸도 다른 칸의 입력칸 줄(라벨 18px + 간격 6px 아래)에 맞춘다 */
   .ed-check {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    align-content: flex-start;
+    column-gap: 8px;
+    margin-top: 24px;
     font-size: 13px;
+    line-height: 38px; /* 첫 줄(체크박스+글자)을 입력칸 높이로 — 안내 문구가 있어도 가운데가 맞게 */
+  }
+  .ed-check em {
+    flex-basis: 100%;
+    margin-top: -6px;
+    line-height: 1.5;
+    padding-left: 24px;
+    font-style: normal;
+    font-size: 11px;
+    color: #6f6a62;
   }
   .ed-coords {
     display: grid;
@@ -226,7 +265,8 @@ import AdminLayout from '../AdminLayout.astro';
     gap: 6px;
   }
   .ed-coords .btn {
-    padding: 6px 10px;
+    height: 38px;
+    padding: 0 12px;
   }
   .has-issue input,
   .has-issue select,

@@ -3,7 +3,7 @@
 //   pnpm tracks                          # 기본 원본 폴더
 //   pnpm tracks -- --src "E:/other"
 //
-// 출력: src/data/tracks.json  { "2": [[lng, lat], ...], ... }
+// 출력: src/content/trips/<slug>/tracks.json  { "2": [[lng, lat], ...], ... }
 // - 시각은 파일명이 아니라 EXIF DateTimeOriginal + OffsetTimeOriginal로 계산한다
 //   (착륙 직전 사진처럼 한국 시간이 남아 있는 경우가 있다)
 // - 날짜 구분은 알마티 현지(+05:00) 기준
@@ -11,13 +11,15 @@
 // - 1일차(비행)는 제외 — 지도에서 장소를 잇는 비행 경로를 그대로 쓴다
 // - 프라이버시 구역: privacy.local.json(git 제외)의 zones 반경 안의 점은 모두 버린다
 //   (숙소 위치가 경로 끝점으로 드러나지 않도록 — Strava의 privacy zone과 같은 방식)
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import exifr from 'exifr';
 
 const args = process.argv.slice(2);
 const i = args.indexOf('--src');
 const SRC = (i >= 0 && args[i + 1]) || process.env.PHOTO_SRC || 'D:/archive/Camera_202609';
+// TODO(2단계): --trip <slug> 인자, 시작일·시간대는 trip.yaml에서
+const TRIP_DIR = 'src/content/trips/almaty-2026';
 const TRIP_START = '2026-09-11';
 const LOCAL_OFFSET_H = 5;
 const MAX_KMH = 180;
@@ -94,7 +96,6 @@ for (const [day, tr] of Object.entries(tracks)) {
   stats[day] = { points: tr.length, km: Math.round(m / 1000) };
 }
 
-mkdirSync('src/data', { recursive: true });
-writeFileSync('src/data/tracks.json', JSON.stringify(out) + '\n');
-console.log(`[tracks] ${pts.length} geotagged photos → src/data/tracks.json`);
+writeFileSync(join(TRIP_DIR, 'tracks.json'), JSON.stringify(out) + '\n');
+console.log(`[tracks] ${pts.length} geotagged photos → ${TRIP_DIR}/tracks.json`);
 console.table(stats);

@@ -5,6 +5,7 @@ title: 사과의 도시에 내리다
 titleEn: Arrival in the City of Apples
 lede: 인천에서 서쪽으로 여섯 시간. 해가 지는 구름 위를 지나 밤의 알마티에 내렸다. 알마티는 '사과가 많은 곳'이라는 뜻이다.
 driveKm: 20
+tone: { accent: "#f2a65a", from: "#3b2a4d", to: "#d9825b" } # 도착한 저녁의 노을
 fromBase: false
 cover:
   src: /photos/day01/20260911_191116.jpg

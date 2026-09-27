@@ -5,6 +5,7 @@ title: 협곡에서 물에 잠긴 숲까지
 titleEn: Canyons & Lakes
 lede: 새벽 6시에 출발해 붉은 협곡, 검은 협곡, 두 개의 산정 호수를 지났다. 그날 밤은 콜사이 호숫가에서 잤다.
 driveKm: 400
+tone: { accent: "#ff6b4a", from: "#4a1c14", to: "#d0573a" } # 붉은 협곡
 cover:
   src: /photos/day05/20260915_094252.jpg
   alt: 샤른 캐년의 붉은 절벽

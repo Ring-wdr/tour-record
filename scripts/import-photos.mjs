@@ -1,4 +1,4 @@
-// 날짜 파일(src/content/days/*.md)에 적힌 사진만 원본 폴더에서 찾아 웹용으로 변환한다.
+// 날짜 파일(src/content/trips/<slug>/days/*.md)에 적힌 사진만 원본 폴더에서 찾아 웹용으로 변환한다.
 //
 //   pnpm photos                         # 기본 원본 폴더 사용
 //   pnpm photos -- --src "E:/other"     # 원본 폴더 지정
@@ -11,7 +11,7 @@
 // sharp는 기본적으로 메타데이터를 쓰지 않으므로 EXIF(GPS 포함)는 모두 제거된다.
 //
 // 추가로:
-// - src/data/photos.json(커밋됨)에 사진별 크기를 기록 → 사진 파일 없이도 빌드 가능 (사진은 R2에서 서빙)
+// - 여행 폴더의 photos.json(커밋됨)에 사진별 크기를 기록 → 사진 파일 없이도 빌드 가능 (사진은 R2에서 서빙)
 // - md에서 빠진 사진의 변환본은 public/photos에서 지운다 (R2에 올라가지 않도록)
 import { readFileSync, readdirSync, existsSync, mkdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,7 +24,9 @@ const argVal = (name) => {
 };
 const SRC = argVal('--src') ?? process.env.PHOTO_SRC ?? 'D:/archive/Camera_202609';
 const FORCE = args.includes('--force');
-const DAYS_DIR = 'src/content/days';
+// TODO(2단계): --trip <slug> 인자 + 사진 경로에 slug 접두사
+const TRIP_DIR = 'src/content/trips/almaty-2026';
+const DAYS_DIR = join(TRIP_DIR, 'days');
 const OUT_DIR = 'public/photos';
 
 const wanted = new Map(); // "day02/20260912_121051" -> 원본 파일명
@@ -71,8 +73,7 @@ for (const [key] of wanted) {
   const m = await sharp(full).metadata();
   sizes[`/photos/${key}.jpg`] = { w: m.width, h: m.height };
 }
-mkdirSync('src/data', { recursive: true });
-writeFileSync('src/data/photos.json', JSON.stringify(sizes, null, 1) + '\n');
+writeFileSync(join(TRIP_DIR, 'photos.json'), JSON.stringify(sizes, null, 1) + '\n');
 
 // 더 이상 쓰지 않는 변환본 정리
 let removed = 0;

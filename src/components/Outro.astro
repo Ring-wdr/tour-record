@@ -1,12 +1,18 @@
 ---
-import { TRIP } from '../lib/trip';
+import { SITE } from '../lib/site';
+import { ymd, type Trip } from '../lib/trip';
+
+interface Props {
+  trip: Trip;
+}
+const t = Astro.props.trip.data;
 ---
 
 <footer class="outro">
   <p class="fin reveal">Fin.</p>
   <div class="credits reveal">
-    <span class="eyebrow">{TRIP.title} · {TRIP.start} — {TRIP.end}</span>
-    <span class="eyebrow">Written by 김만중</span>
+    <span class="eyebrow">{t.title} · {ymd(t.start)} — {ymd(t.end)}</span>
+    <span class="eyebrow">Written by {SITE.author}</span>
     <span class="eyebrow">Map © OpenStreetMap contributors · OpenFreeMap</span>
   </div>
 </footer>

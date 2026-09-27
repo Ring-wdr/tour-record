@@ -1,0 +1,95 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '../../../layouts/Base.astro';
+import Hero from '../../../components/Hero.astro';
+import Stats from '../../../components/Stats.astro';
+import DayRail from '../../../components/DayRail.astro';
+import DayChapter from '../../../components/DayChapter.astro';
+import AltitudeLine from '../../../components/AltitudeLine.astro';
+import Outro from '../../../components/Outro.astro';
+import { getTrips, tripStats, dayRoute, type Trip } from '../../../lib/trip';
+
+export const getStaticPaths = (async () => {
+  const trips = await getTrips();
+  return trips.map((trip) => ({ params: { slug: trip.slug }, props: { trip } }));
+}) satisfies GetStaticPaths;
+
+interface Props {
+  trip: Trip;
+}
+const { trip } = Astro.props;
+const { data: t, days } = trip;
+const stats = tripStats(days);
+const heroDay = days.find((d) => d.data.day === t.heroDay)!;
+
+// 지도 스크립트에 넘길 최소 데이터
+const mapData = {
+  base: t.base,
+  country: trip.geo && { bbox: trip.geo.bbox, ring: trip.geo.ring },
+  days: days.map((d, i) => ({
+    day: d.data.day,
+    accent: d.data.tone.accent,
+    route: dayRoute(d, days[i - 1], t.base, trip.tracks[d.data.day]),
+    spotlight: d.data.spotlightCountry,
+    stops: d.data.stops.map((s) => ({ id: s.id, name: s.name, kind: s.kind, coords: s.coords, camera: s.camera })),
+  })),
+};
+---
+
+<Base
+  title={`${t.title} — ${t.subtitle}`}
+  description={t.description}
+  image={heroDay.data.cover && { src: '/photos/og.jpg', alt: heroDay.data.cover.alt }}
+>
+  <Hero trip={trip} cover={heroDay} />
+  <Stats stats={stats} />
+  <DayRail days={days} />
+
+  <div id="map-stage" aria-hidden="true">
+    <div id="map"></div>
+    <div class="map-vignette"></div>
+  </div>
+
+  <main id="story">
+    {days.map((day) => <DayChapter day={day} />)}
+  </main>
+
+  <AltitudeLine days={days} note={t.altitudeNote} />
+  <Outro trip={trip} />
+
+  <script type="application/json" id="trip-data" set:html={JSON.stringify(mapData)} />
+</Base>
+
+<script>
+  import '../../../scripts/story';
+  import '../../../scripts/lightbox';
+</script>
+
+<style>
+  #map-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  :global(body.in-story) #map-stage {
+    opacity: 1;
+  }
+  #map {
+    position: absolute;
+    inset: 0;
+  }
+  .map-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 40% 50%, transparent 45%, rgb(0 0 0 / 0.55)),
+      linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 30%);
+  }
+  #story {
+    position: relative;
+    z-index: 1;
+  }
+</style>

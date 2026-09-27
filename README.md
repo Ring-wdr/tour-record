@@ -14,7 +14,7 @@
 
 | 영역 | 사용 |
 |---|---|
-| 사이트 | [Astro 7](https://astro.build) 정적 빌드, 한 페이지 |
+| 사이트 | [Astro 7](https://astro.build) 정적 빌드, 여행마다 한 페이지 (`/trips/<slug>/`) |
 | 지도 | [MapLibre GL 6](https://maplibre.org) + [OpenFreeMap](https://openfreemap.org) `dark` 스타일 + AWS terrarium 고도 타일 |
 | 사진 | [sharp](https://sharp.pixelplumbing.com)로 변환, [PhotoSwipe 5](https://photoswipe.com) 라이트박스 |
 | 호스팅 | Cloudflare Workers Static Assets + R2(사진) |
@@ -22,17 +22,17 @@
 ## 구조
 
 ```
-src/content/days/day01~07.md   하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+src/content/trips/<slug>/       여행 1개 = trip.yaml(여행 정보) + days/dayXX.md + photos.json·tracks.json
+  days/dayXX.md                 하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+src/schemas/trip.ts             콘텐츠 스키마 (zod)
 src/components/                 Hero, Stats, DayChapter, AltitudeLine, DayRail, Outro, Photo
 src/scripts/story.ts            스크롤 ↔ 지도 연동 (IntersectionObserver)
-src/data/tracks.json            사진 GPS로 만든 날짜별 이동 경로
-src/data/photos.json            사진 크기 목록 (빌드에 사진 파일이 필요 없도록)
-src/data/kazakhstan.json        국경선 (Natural Earth)
+src/data/geo/                   국경선 (Natural Earth)
 worker/index.ts                 /photos/* 를 R2에서 서빙하는 Worker
 scripts/                        사진 변환·업로드, 경로 생성, MapLibre 워커 복사
 ```
 
-콘텐츠는 모두 `src/content/days/*.md`에서 수정한다. 스키마는 `src/content.config.ts`.
+콘텐츠는 모두 `src/content/trips/<slug>/`에서 수정한다. 스키마는 `src/schemas/trip.ts`, 여러 파일에 걸친 검증은 `src/lib/trip.ts`의 `checkTrip`.
 
 ## 실행
 
@@ -60,7 +60,7 @@ pnpm dev          # http://localhost:4321
 ### 사진을 바꿀 때
 
 ```bash
-# 1. src/content/days/dayXX.md의 photos / cover 수정
+# 1. src/content/trips/<slug>/days/dayXX.md의 photos / cover 수정
 pnpm photos          # 2. 변환
 pnpm photos:upload   # 3. R2 업로드
 pnpm cf:deploy       # 4. 배포

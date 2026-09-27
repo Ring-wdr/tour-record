@@ -8,7 +8,8 @@ type LngLat = [number, number];
 type Camera = { zoom: number; pitch: number; bearing: number };
 type TripData = {
   base: LngLat;
-  country: { bbox: [LngLat, LngLat]; ring: LngLat[] };
+  /** trip.yaml에 spotlight가 있는 여행만 */
+  country?: { bbox: [LngLat, LngLat]; ring: LngLat[] };
   days: {
     day: number;
     accent: string;
@@ -172,15 +173,23 @@ map.on('load', () => {
     paint: { 'line-color': '#ffffff', 'line-width': 3.5 },
   });
 
-  // 나라 스포트라이트: 세계 전체를 덮는 사각형에 카자흐스탄 모양 구멍을 뚫어 국경 밖을 어둡게
+  // 나라 스포트라이트: 세계 전체를 덮는 사각형에 나라 모양 구멍을 뚫어 국경 밖을 어둡게
+  if (data.country) addSpotlight(data.country.ring);
+
+  mapReady = true;
+  pending?.();
+  pending = null;
+});
+
+function addSpotlight(ring: LngLat[]) {
   const world: LngLat[] = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
   map.addSource('spotlight', {
     type: 'geojson',
     data: {
       type: 'FeatureCollection',
       features: [
-        { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world, [...data.country.ring].reverse()] } },
-        { type: 'Feature', properties: { edge: true }, geometry: { type: 'LineString', coordinates: data.country.ring } },
+        { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world, [...ring].reverse()] } },
+        { type: 'Feature', properties: { edge: true }, geometry: { type: 'LineString', coordinates: ring } },
       ],
     },
   });
@@ -198,11 +207,7 @@ map.on('load', () => {
     filter: ['has', 'edge'],
     paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0, 'line-opacity-transition': { duration: 1200 } },
   });
-
-  mapReady = true;
-  pending?.();
-  pending = null;
-});
+}
 
 // 장소 마커 (HTML)
 const markers = new Map<string, HTMLElement>();
@@ -277,6 +282,7 @@ function setTerrain(on: boolean) {
 }
 
 function setSpotlight(on: boolean, color = '#ffffff') {
+  if (!data.country) return;
   map.setPaintProperty('spotlight-mask', 'fill-opacity', on ? 0.72 : 0);
   map.setPaintProperty('spotlight-edge', 'line-opacity', on ? 0.9 : 0);
   if (on) map.setPaintProperty('spotlight-edge', 'line-color', color);
@@ -291,9 +297,10 @@ function showDay(day: number) {
   go(() => {
     const d = dayByNum.get(day)!;
     setTerrain(true);
-    setSpotlight(!!d.spotlight, d.accent);
-    const b = d.spotlight
-      ? new LngLatBounds(data.country.bbox[0], data.country.bbox[1])
+    const country = d.spotlight ? data.country : undefined;
+    setSpotlight(!!country, d.accent);
+    const b = country
+      ? new LngLatBounds(country.bbox[0], country.bbox[1])
       : d.route.reduce((acc, c) => acc.extend(c), new LngLatBounds(d.route[0], d.route[0]));
     const { w, h, wide } = viewport();
     map.fitBounds(b, {
@@ -301,7 +308,7 @@ function showDay(day: number) {
         ? { top: h * 0.15, bottom: h * 0.15, left: w * 0.12, right: w * 0.4 }
         : { top: h * 0.12, bottom: h * 0.4, left: w * 0.1, right: w * 0.1 },
       maxZoom: 12,
-      pitch: d.spotlight ? 0 : 35,
+      pitch: country ? 0 : 35,
       bearing: 0,
       duration: reduceMotion ? 0 : 2400,
       essential: true,

@@ -5,6 +5,7 @@ title: 시장의 냄새, 미술관의 빛
 titleEn: Bazaar, Art & Goodbye
 lede: 과일과 말린 견과가 산처럼 쌓인 시장에서 시작해, 새로 문을 연 미술관을 거쳐 밤 비행기로 떠났다.
 driveKm: 30
+tone: { accent: "#8bd17c", from: "#2b3a1f", to: "#b98a4a" } # 시장과 작별
 # 개요에서는 인천까지의 비행 구간 대신 카자흐스탄만 비춘다
 spotlightCountry: true
 cover:

@@ -5,6 +5,7 @@ title: 구름보다 높은 곤돌라
 titleEn: Shymbulak & a Night Walk
 lede: 도심에서 한 시간 만에 해발 3,000m를 넘었다. 밤에는 불 켜진 젠코브 성당까지 걸었다.
 driveKm: 60
+tone: { accent: "#9cc3ff", from: "#1c2a44", to: "#8fb3d9" } # 설산의 푸른빛
 toBase: true
 cover:
   src: /photos/day03/20260913_115111.jpg

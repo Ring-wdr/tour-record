@@ -1,85 +1,106 @@
 ---
+// 여행 목록. 지금은 최소한의 목록 — 메인 화면 디자인은 따로 작업한다
 import Base from '../layouts/Base.astro';
-import Hero from '../components/Hero.astro';
-import Stats from '../components/Stats.astro';
-import DayRail from '../components/DayRail.astro';
-import DayChapter from '../components/DayChapter.astro';
-import AltitudeLine from '../components/AltitudeLine.astro';
-import Outro from '../components/Outro.astro';
-import { getDays, tripStats, dayRoute, DAY_TONES, TRIP } from '../lib/trip';
-import tracks from '../data/tracks.json';
-import kazakhstan from '../data/kazakhstan.json';
+import Photo from '../components/Photo.astro';
+import { SITE } from '../lib/site';
+import { getTrips, ymd } from '../lib/trip';
 
-const days = await getDays();
-const stats = tripStats(days);
-
-// 지도 스크립트에 넘길 최소 데이터
-const mapData = {
-  base: TRIP.base,
-  country: { bbox: kazakhstan.bbox, ring: kazakhstan.ring },
-  days: days.map((d, i) => ({
-    day: d.data.day,
-    accent: DAY_TONES[d.data.day].accent,
-    route: dayRoute(d, days[i - 1], (tracks as Record<string, [number, number][]>)[d.data.day]),
-    spotlight: d.data.spotlightCountry,
-    stops: d.data.stops.map((s) => ({ id: s.id, name: s.name, kind: s.kind, coords: s.coords, camera: s.camera })),
-  })),
-};
+const trips = await getTrips();
+const covers = trips.map((t) => t.days.find((d) => d.data.day === t.data.heroDay)!);
 ---
 
-<Base
-  title={`${TRIP.title} — ${TRIP.subtitle}`}
-  description={`${TRIP.subtitleKo}. 카자흐스탄 알마티 여행 기록 (${TRIP.start} – ${TRIP.end}).`}
->
-  <Hero cover={days[1]} />
-  <Stats stats={stats} />
-  <DayRail days={days} />
-
-  <div id="map-stage" aria-hidden="true">
-    <div id="map"></div>
-    <div class="map-vignette"></div>
-  </div>
-
-  <main id="story">
-    {days.map((day) => <DayChapter day={day} />)}
+<Base title={SITE.title} description={`${SITE.titleKo} — ${trips.map((t) => t.data.title).join(' · ')}`}>
+  <main class="index">
+    <header>
+      <p class="eyebrow">{SITE.titleKo}</p>
+      <h1>{SITE.title}</h1>
+    </header>
+    <ul>
+      {
+        trips.map((trip, i) => (
+          <li style={`--accent:${covers[i].data.tone.accent}`}>
+            <a href={`/trips/${trip.slug}/`}>
+              {covers[i].data.cover && <Photo photo={covers[i].data.cover!} tone={covers[i].data.tone} class="cover" static />}
+              <span class="meta">
+                <span class="eyebrow">
+                  {trip.data.country} · {ymd(trip.data.start)} — {ymd(trip.data.end)}
+                </span>
+                <span class="title">{trip.data.title}</span>
+                <span class="sub">{trip.data.subtitleKo}</span>
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
   </main>
-
-  <AltitudeLine days={days} />
-  <Outro />
-
-  <script type="application/json" id="trip-data" set:html={JSON.stringify(mapData)} />
 </Base>
 
-<script>
-  import '../scripts/story';
-  import '../scripts/lightbox';
-</script>
-
 <style>
-  #map-stage {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    opacity: 0;
-    transition: opacity 0.8s;
+  .index {
+    min-height: 100svh;
+    padding: clamp(64px, 12vh, 140px) var(--gutter);
   }
-  :global(body.in-story) #map-stage {
-    opacity: 1;
+  h1 {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(40px, 8vw, 96px);
+    line-height: 0.9;
+    margin: 8px 0 0;
   }
-  #map {
-    position: absolute;
-    inset: 0;
+  ul {
+    list-style: none;
+    margin: 48px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+    gap: 24px;
   }
-  .map-vignette {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse at 40% 50%, transparent 45%, rgb(0 0 0 / 0.55)),
-      linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 30%);
-  }
-  #story {
+  a {
     position: relative;
+    display: block;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    color: inherit;
+    text-decoration: none;
+    background: #111;
+  }
+  a :global(.cover) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: transform 1.2s var(--ease-out);
+  }
+  a:hover :global(.cover) {
+    transform: scale(1.04);
+  }
+  a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.85), transparent 55%);
+  }
+  .meta {
+    position: absolute;
     z-index: 1;
+    inset: auto 0 0;
+    display: grid;
+    gap: 4px;
+    padding: 24px;
+  }
+  .meta .eyebrow {
+    color: var(--accent);
+  }
+  .title {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1;
+  }
+  .sub {
+    font-family: var(--serif);
+    color: var(--film-dim);
   }
 </style>

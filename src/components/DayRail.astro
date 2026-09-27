@@ -1,5 +1,5 @@
 ---
-import { DAY_TONES, formatDate, pad2, type Day } from '../lib/trip';
+import { formatDate, pad2, type Day } from '../lib/trip';
 
 interface Props {
   days: Day[];
@@ -12,7 +12,7 @@ const { days } = Astro.props;
     {
       days.map((d) => (
         <li>
-          <a href={`#day-${d.data.day}`} data-rail-day={d.data.day} style={`--c:${DAY_TONES[d.data.day].accent}`}>
+          <a href={`#day-${d.data.day}`} data-rail-day={d.data.day} style={`--c:${d.data.tone.accent}`}>
             <span class="tick" />
             <span class="txt">
               <b>D{pad2(d.data.day)}</b> {formatDate(d.data.date).md}

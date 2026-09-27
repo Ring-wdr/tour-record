@@ -5,6 +5,7 @@ title: 금빛 성화와 유목민의 시간
 titleEn: City Walk
 lede: Navat의 아점으로 시작해 전날 밤 본 성당을 낮에 다시 찾고, 아르바트 거리와 모스크, 박물관을 지나 공화국 광장까지. 저녁은 스테이크.
 driveKm: 20
+tone: { accent: "#f4d35e", from: "#2f4a3a", to: "#e8c46a" } # 성당의 파스텔
 toBase: true
 cover:
   src: /photos/day04/20260914_112152.jpg

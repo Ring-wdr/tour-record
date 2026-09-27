@@ -5,6 +5,7 @@ title: 해발 2,500m의 청록색
 titleEn: Big Almaty Lake & Kok Tobe
 lede: 송수관을 따라 산길을 올라 빙하 호수에 닿았고, 저녁엔 콕토베에 올라 도시의 불빛을 내려다봤다.
 driveKm: 80
+tone: { accent: "#3fd0c9", from: "#0c3b4a", to: "#2fa7a0" } # 빙하호의 청록
 toBase: true
 cover:
   src: /photos/day02/20260912_121051.jpg

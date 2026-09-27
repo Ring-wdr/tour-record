@@ -1,18 +1,18 @@
 ---
-import { resolvePhoto, DAY_TONES, type PhotoInput } from '../lib/trip';
+import { resolvePhoto, type PhotoInput, type Tone } from '../lib/trip';
 
 interface Props {
   photo: PhotoInput;
-  day: number;
+  /** 사진이 없을 때 플레이스홀더 그라디언트 색 */
+  tone: Tone;
   class?: string;
   /** 표지처럼 라이트박스 없이 배경으로만 쓰는 경우 */
   static?: boolean;
   eager?: boolean;
 }
 
-const { photo, day, class: className, static: isStatic = false, eager = false } = Astro.props;
-const p = await resolvePhoto(photo);
-const tone = DAY_TONES[day];
+const { photo, tone, class: className, static: isStatic = false, eager = false } = Astro.props;
+const p = resolvePhoto(photo);
 // 파일 경로별로 조금씩 다른 각도의 그라디언트 — 플레이스홀더끼리 구분되게
 const angle = [...photo.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
 ---

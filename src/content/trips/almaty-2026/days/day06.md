@@ -5,6 +5,7 @@ title: 모래가 노래하는 사막
 titleEn: Altyn-Emel
 lede: 호숫가에서 새벽에 출발해 알틴에멜 국립공원으로. 노래하는 모래언덕, 붉은 화산암, 줄무늬 산을 지나 사막에서 해가 지는 걸 봤다.
 driveKm: 750
+tone: { accent: "#e9c46a", from: "#4a3418", to: "#d9b26a" } # 모래언덕
 fromBase: false
 toBase: true
 cover:

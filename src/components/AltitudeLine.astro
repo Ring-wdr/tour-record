@@ -1,15 +1,17 @@
 ---
-import { DAY_TONES, pad2, type Day } from '../lib/trip';
+import { pad2, type Day } from '../lib/trip';
 
 interface Props {
   days: Day[];
+  /** 제목 아래 설명 문구 */
+  note?: string;
 }
-const { days } = Astro.props;
+const { days, note } = Astro.props;
+const accentOf = (day: number) => days.find((d) => d.data.day === day)!.data.tone.accent;
 
 const W = 1000;
 const H = 360;
 const PAD = { top: 60, right: 30, bottom: 50, left: 30 };
-const MAX = 3500;
 
 // 고도가 없는 장소(인천 등)는 그래프에서 뺀다
 const pts = days.flatMap((d) =>
@@ -19,6 +21,10 @@ const pts = days.flatMap((d) =>
 );
 const lowest = Math.min(...pts.map((p) => p.elev));
 const highest = Math.max(...pts.map((p) => p.elev));
+// 그래프 천장: 최고점 위로 여유를 두고 500m 단위로 올림. 눈금은 4칸 이하가 되는 간격
+const MAX = Math.ceil((highest + 300) / 500) * 500;
+const tickStep = [100, 250, 500, 1000, 2000].find((s) => MAX / s <= 4) ?? 2000;
+const ticks = Array.from({ length: Math.floor((MAX - 1) / tickStep) }, (_, i) => (i + 1) * tickStep);
 const fmt = (n: number) => n.toLocaleString('en-US');
 const step = (W - PAD.left - PAD.right) / (pts.length - 1);
 const x = (i: number) => PAD.left + i * step;
@@ -27,11 +33,10 @@ const y = (e: number) => PAD.top + (1 - e / MAX) * (H - PAD.top - PAD.bottom);
 const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.elev).toFixed(1)}`).join(' ');
 const area = `${line} L${x(pts.length - 1)},${H - PAD.bottom} L${x(0)},${H - PAD.bottom} Z`;
 
-// 날짜가 바뀌는 지점
-const dayStarts = days.map((d) => ({
-  day: d.data.day,
-  i: pts.findIndex((p) => p.day === d.data.day),
-}));
+// 날짜가 바뀌는 지점 (고도 있는 장소가 없는 날은 건너뛴다)
+const dayStarts = days
+  .map((d) => ({ day: d.data.day, i: pts.findIndex((p) => p.day === d.data.day) }))
+  .filter((d) => d.i >= 0);
 
 // 라벨: 주변보다 두드러지는 지점부터 배치하고, 이미 놓인 라벨과 겹치면 건너뛴다.
 // 봉우리는 점 위에, 골짜기는 점 아래에 단다.
@@ -58,11 +63,12 @@ const shortName = (n: string) => {
 };
 ---
 
+{pts.length >= 2 && (
 <section class="alt" data-inview>
   <div class="alt-head reveal">
     <p class="eyebrow">The Altitude Line</p>
     <h2>{fmt(lowest)}m에서 {fmt(highest)}m까지</h2>
-    <p>빙하 호수와 곤돌라 종점을 지나 사막의 줄무늬 산까지. 일주일 동안 오르내린 높이를 한 줄로 그려봤다.</p>
+    {note && <p>{note}</p>}
   </div>
 
   <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="여행 기간 방문지의 해발고도 변화">
@@ -74,7 +80,7 @@ const shortName = (n: string) => {
     </defs>
 
     {
-      [1000, 2000, 3000].map((e) => (
+      ticks.map((e) => (
         <g class="grid">
           <line x1={PAD.left} x2={W - PAD.right} y1={y(e)} y2={y(e)} />
           <text x={W - PAD.right} y={y(e) - 6} text-anchor="end">
@@ -88,7 +94,7 @@ const shortName = (n: string) => {
       dayStarts.map(({ day, i }) => (
         <g class="day-sep">
           <line x1={x(i)} x2={x(i)} y1={PAD.top - 20} y2={H - PAD.bottom} />
-          <text x={x(i) + 4} y={H - PAD.bottom + 20} fill={DAY_TONES[day].accent}>
+          <text x={x(i) + 4} y={H - PAD.bottom + 20} fill={accentOf(day)}>
             D{pad2(day)}
           </text>
         </g>
@@ -100,7 +106,7 @@ const shortName = (n: string) => {
 
     {
       pts.map((p, i) => (
-        <circle class="dot" cx={x(i)} cy={y(p.elev)} r="4" fill={DAY_TONES[p.day].accent} style={`--d:${(i / pts.length) * 2.4}s`} />
+        <circle class="dot" cx={x(i)} cy={y(p.elev)} r="4" fill={accentOf(p.day)} style={`--d:${(i / pts.length) * 2.4}s`} />
       ))
     }
     {
@@ -117,6 +123,7 @@ const shortName = (n: string) => {
     }
   </svg>
 </section>
+)}
 
 <style>
   .alt {

@@ -1,110 +1,237 @@
 ---
-// 여행 목록. 지금은 최소한의 목록 — 메인 화면 디자인은 따로 작업한다
+// 메인: 여행 목록. 최근 여행부터
 import Base from '../layouts/Base.astro';
-import Photo from '../components/Photo.astro';
+import TripEntry from '../components/TripEntry.astro';
 import { SITE } from '../lib/site';
-import { getTrips, ogImage, ymd } from '../lib/trip';
+import { getTrips, ogImage, tripStats } from '../lib/trip';
 
 const trips = await getTrips();
-const covers = trips.map((t) => t.days.find((d) => d.data.day === t.data.heroDay)!);
+const latest = trips[0];
+const latestCover = latest?.days.find((d) => d.data.day === latest.data.heroDay)?.data.cover;
+
+const all = trips.map((t) => tripStats(t.days));
+const summary = [
+  { value: trips.length, unit: 'journey' },
+  { value: new Set(trips.map((t) => t.data.country)).size, unit: 'country' },
+  { value: all.reduce((n, s) => n + s.days, 0), unit: 'day' },
+  { value: all.reduce((n, s) => n + s.photos, 0), unit: 'photograph' },
+].map((s) => ({ ...s, unit: s.value === 1 ? s.unit : s.unit === 'country' ? 'countries' : `${s.unit}s` }));
+const years = trips.map((t) => t.data.start.getUTCFullYear());
+const span = years.length ? `${Math.min(...years)}${Math.max(...years) > Math.min(...years) ? ` — ${Math.max(...years)}` : ''}` : '';
 ---
 
 <Base
-  title={SITE.title}
+  title={`${SITE.title} — ${SITE.titleKo}`}
   description={`${SITE.titleKo} — ${trips.map((t) => t.data.title).join(' · ')}`}
-  image={covers[0]?.data.cover && { src: ogImage(trips[0].slug), alt: covers[0].data.cover.alt }}
+  image={latest && latestCover && { src: ogImage(latest.slug), alt: latestCover.alt }}
 >
-  <main class="index">
-    <header>
-      <p class="eyebrow">{SITE.titleKo}</p>
-      <h1>{SITE.title}</h1>
-    </header>
-    <ul>
-      {
-        trips.map((trip, i) => (
-          <li style={`--accent:${covers[i].data.tone.accent}`}>
-            <a href={`/trips/${trip.slug}/`}>
-              {covers[i].data.cover && <Photo photo={covers[i].data.cover!} tone={covers[i].data.tone} class="cover" static />}
-              <span class="meta">
-                <span class="eyebrow">
-                  {trip.data.country} · {ymd(trip.data.start)} — {ymd(trip.data.end)}
-                </span>
-                <span class="title">{trip.data.title}</span>
-                <span class="sub">{trip.data.subtitleKo}</span>
-              </span>
-            </a>
-          </li>
-        ))
-      }
-    </ul>
+  <header class="mast">
+    <div class="bar bar-top" aria-hidden="true"></div>
+    <div class="bar bar-bottom" aria-hidden="true"></div>
+
+    <div class="mast-meta mast-meta-top">
+      <span class="eyebrow">A Travel Journal</span>
+      <span class="eyebrow">{span}</span>
+    </div>
+
+    <div class="mast-title">
+      <h1>
+        {
+          SITE.title.split(' ').map((word, w) => (
+            <span class="word">
+              {[...word].map((ch, i) => (
+                <span style={`--i:${w * 6 + i}`}>{ch}</span>
+              ))}
+            </span>
+          ))
+        }
+      </h1>
+      <p class="ko">{SITE.titleKo}</p>
+    </div>
+
+    <div class="mast-meta mast-meta-bottom">
+      <ul class="summary">
+        {
+          summary.map((s) => (
+            <li>
+              <b>{s.value.toLocaleString('en-US')}</b> {s.unit}
+            </li>
+          ))
+        }
+      </ul>
+      <a class="eyebrow scroll-cue" href="#journeys">Scroll <span aria-hidden="true">↓</span></a>
+    </div>
+  </header>
+
+  <main id="journeys" class="journeys">
+    <p class="eyebrow section-label">The Journeys</p>
+    {trips.map((trip, i) => <TripEntry trip={trip} index={i} />)}
   </main>
+
+  <footer class="foot">
+    <span class="eyebrow">{SITE.title} · Written by {SITE.author}</span>
+  </footer>
 </Base>
 
+<script>
+  // 스크롤 진입 시 떠오르기 (여행 페이지의 story.ts와 같은 규칙, 지도 없이)
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);
+      }
+    },
+    { threshold: 0.2 },
+  );
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+</script>
+
 <style>
-  .index {
-    min-height: 100svh;
-    padding: clamp(64px, 12vh, 140px) var(--gutter);
+  /* ---------- Masthead ---------- */
+  .mast {
+    position: relative;
+    height: 100svh;
+    min-height: 560px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 110%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+      var(--ink);
+  }
+  .bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: #000;
+    z-index: 2;
+    animation: letterbox 1.8s 0.2s var(--ease-out) forwards;
+  }
+  .bar-top { top: 0; }
+  .bar-bottom { bottom: 0; }
+  @keyframes letterbox {
+    to { height: 9vh; }
+  }
+
+  .mast-title {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    padding: 0 var(--gutter);
   }
   h1 {
     font-family: var(--serif-display);
     font-weight: 900;
     font-variation-settings: 'opsz' 144;
-    font-size: clamp(40px, 8vw, 96px);
-    line-height: 0.9;
-    margin: 8px 0 0;
+    font-size: clamp(56px, 12vw, 200px);
+    line-height: 0.86;
+    letter-spacing: -0.03em;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
-  ul {
-    list-style: none;
-    margin: 48px 0 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
-    gap: 24px;
+  .word {
+    display: flex;
   }
-  a {
-    position: relative;
-    display: block;
-    aspect-ratio: 4 / 5;
-    overflow: hidden;
-    color: inherit;
-    text-decoration: none;
-    background: #111;
+  .word:nth-child(2) {
+    font-style: italic;
+    font-weight: 300;
   }
-  a :global(.cover) {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    transition: transform 1.2s var(--ease-out);
+  h1 span span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.3em);
+    filter: blur(12px);
+    animation: letter 1.4s calc(1s + var(--i) * 0.07s) var(--ease-out) forwards;
   }
-  a:hover :global(.cover) {
-    transform: scale(1.04);
+  @keyframes letter {
+    to { opacity: 1; transform: none; filter: blur(0); }
   }
-  a::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgb(0 0 0 / 0.85), transparent 55%);
-  }
-  .meta {
-    position: absolute;
-    z-index: 1;
-    inset: auto 0 0;
-    display: grid;
-    gap: 4px;
-    padding: 24px;
-  }
-  .meta .eyebrow {
-    color: var(--accent);
-  }
-  .title {
-    font-family: var(--serif-display);
-    font-weight: 900;
-    font-size: clamp(36px, 5vw, 56px);
-    line-height: 1;
-  }
-  .sub {
+  .ko {
     font-family: var(--serif);
+    font-size: clamp(15px, 1.6vw, 19px);
+    letter-spacing: 0.3em;
+    margin: 1.4em 0 0;
+    opacity: 0;
+    animation: fade 1.4s 2s forwards;
+  }
+  @keyframes fade {
+    to { opacity: 1; }
+  }
+
+  .mast-meta {
+    position: absolute;
+    z-index: 3;
+    left: var(--gutter);
+    right: var(--gutter);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    animation: fade 1s 2.2s forwards;
+  }
+  .mast-meta-top { top: calc(9vh - 28px); }
+  .mast-meta-bottom { bottom: calc(9vh - 30px); }
+  .mast-meta .eyebrow { color: #cfc9be; }
+  .summary {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    margin: 0;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
     color: var(--film-dim);
+  }
+  .summary b {
+    font-weight: 500;
+    color: var(--film);
+  }
+  .scroll-cue {
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .scroll-cue span {
+    display: inline-block;
+    animation: bob 2s infinite;
+  }
+  @keyframes bob {
+    50% { transform: translateY(4px); }
+  }
+
+  /* ---------- Journeys ---------- */
+  .journeys {
+    display: grid;
+    gap: clamp(120px, 20vh, 220px);
+    padding: clamp(80px, 14vh, 160px) var(--gutter) clamp(120px, 20vh, 220px);
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+  .section-label {
+    margin: 0 0 calc(-1 * clamp(60px, 12vh, 140px));
+    padding-bottom: 12px;
+    border-bottom: 1px solid #222;
+  }
+
+  .foot {
+    background: #000;
+    padding: 48px var(--gutter);
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .mast-meta-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .scroll-cue { display: none; }
   }
 </style>

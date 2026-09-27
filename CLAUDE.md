@@ -66,7 +66,7 @@
 1. ~~여행 단위 폴더 + `/trips/[slug]/` 라우트 + 스키마/교차 검증~~
 2. ~~파이프라인 스크립트 `--trip <slug>`, 사진 URL·R2 키에 slug 접두사(`/photos/<slug>/dayXX/...`), 여행별 OG 이미지~~
 3. ~~Cloudflare 이전: Worker `tour-record`, R2 `tour-record-photos`, 옛 주소는 301 리다이렉트 Worker~~
-4. 메인 목록 페이지 디자인 (지금 `/`는 최소 목록)
+4. ~~메인 목록 페이지 (`src/pages/index.astro` + `TripEntry`·`RouteGlyph`: 여행별 표지·통계·경로 선 그림)~~
 5. 관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장
 
 ## 로드맵 — 알마티

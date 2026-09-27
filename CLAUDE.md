@@ -1,6 +1,6 @@
 # 여행 기록 사이트
 
-다녀온 여행들을 시네마틱 + 매거진 + 여행 일기 톤의 인터랙티브 웹페이지로 만든다. 첫 여행은 카자흐스탄 알마티(2026.09.11–09.17).
+다녀온 여행들을 시네마틱 + 매거진 + 여행 일기 톤의 인터랙티브 웹페이지로 만든다. 여행: 카자흐스탄 알마티(2026.09.11–09.17), 일본 사가(2026.08.19–08.21), 대만 타이베이(2026.09.02–09.05).
 `/` = 여행 목록, `/trips/<slug>/` = 여행 하나의 스크롤리텔링 페이지. 모든 여행의 섹션 구성은 같다.
 포트폴리오용 전체 공개. 인터랙션을 위해 분위기를 일부 희생하는 것은 허용된다.
 
@@ -14,7 +14,7 @@
 
 ## 구조
 - `src/content/trips/<slug>/` — **여행 1개 = 폴더 1개, 모든 콘텐츠의 원천.** 폴더 이름이 URL slug
-  - `trip.yaml` — 제목·기간·나라·공개 숙소 좌표(`base`)·표지 날(`heroDay`)·스포트라이트 국경(`spotlight`)
+  - `trip.yaml` — 제목·기간·나라·공개 숙소 좌표(`base`)·표지 날(`heroDay`)·스포트라이트 국경(`spotlight`). `draft: true`면 `astro dev`에서만 보이고 운영 빌드(`getTrips`)와 `pnpm photos:upload`에서 빠진다 → 공개할 때 지우고 업로드·배포
   - `days/dayXX.md` — frontmatter = 날짜 색(`tone`)·장소(stops)·좌표·카메라·사진, 본문 = 그날의 일기
   - `photos.json`(`pnpm photos`), `tracks.json`(`pnpm tracks`) — 생성 파일, 커밋함
 - `src/schemas/trip.ts` — zod 스키마(`astro/zod`). content collection과 관리자 API가 같이 쓴다. 파일 하나로 확인되는 규칙은 여기
@@ -61,10 +61,14 @@
 - 사진 추가/변경 순서: dayXX.md 수정 → `pnpm photos` → `pnpm photos:upload`(바뀐 파일만 R2에 업로드) → `pnpm cf:deploy`
 - 로컬에서 R2까지 확인: `pnpm photos:upload -- --local` → `pnpm cf:preview`
 - 링크 미리보기 `/photos/<slug>/og.jpg`(1200×630)는 `pnpm photos`가 trip.yaml `heroDay`의 표지(첫 화면 사진)로 만든다. `/`는 가장 최근 여행의 것을 쓴다
+- trip.yaml `tracks.maxAltitude`: GPS 고도가 이보다 높은 점(착륙 직전 기내 사진) 제외. `tracks.dayStartHour`: 현지 그 시각 전 사진은 전날 경로(자정 넘어 도착한 첫날). 사진 궤적이 있는 날도 맨 앞·맨 뒤의 `kind: flight` 장소는 경로선에 이어 붙는다
 - `pnpm tracks` → 원본 사진 전체의 GPS를 실제 시각(EXIF 오프셋 반영) 순으로 이어 날짜별 경로(`tracks.json`) 생성, 시속 180km 초과 점은 GPS 오류로 제외. 날짜 구분은 trip.yaml `utcOffset`, `tracks.skipDays`(알마티 1일차 = 비행)는 장소를 잇는 선, `tracks.bbox` 밖 점은 버림
 - `.scratch/` (git 제외)에 EXIF 스캔(`scan.json`)·밀착 인화 스크립트가 있다: `node .scratch/sheet.mjs <날짜> <시작> <끝> <이름> [최대장수]`
 
 ## 확인이 필요한 데이터 (TODO)
+- 사가·타이베이: 일기 본문과 장소 설명은 사진만 보고 쓴 초안 (알마티와 달리 본인 메모 없음) → 직접 고쳐 쓰기. 가게 이름(다라 라멘집, 가시마 케이크 가게, 다케오 라멘집, 루러우판 집) 미확인. 사람이 나온 사진(도리이 앞 인물, 지우펀 홍등 앞 인물)은 뺐음
+- 사가·타이베이 고도: GPS 고도는 타원체 기준이라 지오이드만큼 높게 나온다(규슈 약 +31m, 대만 약 +20m) → 공식 값(공항 등)이 없는 곳은 GPS 중앙값에서 빼서 적음. 평지 시내 장소는 고도 생략
+- 개발 서버가 이미 떠 있을 때(다른 세션) 하나 더 띄우려면 `.claude/launch.json`의 `dev-4322`(`astro dev --ignore-lock`)
 - 식당 이름(Smile·Navat 외), 카투타우 식별(사진상 붉은 화산암 지대)
 - 4일차 Navat 아점·아르바트 거리는 일기에만 있고 지도 장소로는 아직 없음 (사진 09:30~10:50, 12:20~14:00 묶음)
 - `driveKm`은 사진 GPS 직선거리 × 1.25 추정치

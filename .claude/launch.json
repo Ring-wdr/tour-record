@@ -4,8 +4,25 @@
     {
       "name": "dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev", "--port", "4321"],
+      "runtimeArgs": [
+        "dev",
+        "--port",
+        "4321"
+      ],
       "port": 4321
+    },
+    {
+      "name": "dev-4322",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "exec",
+        "astro",
+        "dev",
+        "--port",
+        "4322",
+        "--ignore-lock"
+      ],
+      "port": 4322
     }
   ]
 }

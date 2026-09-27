@@ -108,8 +108,14 @@ export const tripSchema = z
         bbox: z.tuple([lngLat, lngLat]).optional(),
         /** 사진 궤적 대신 장소를 이은 선을 쓰는 날 (비행만 있는 날 등) */
         skipDays: z.array(z.number().int().min(1)).default([]),
+        /** GPS 고도가 이보다 높은 점(기내에서 찍은 사진)은 버린다 (m) */
+        maxAltitude: z.number().optional(),
+        /** 현지 시각 이 시(時) 전에 찍은 사진은 전날 경로로 친다 — 자정을 넘겨 도착한 날 */
+        dayStartHour: z.number().int().min(0).max(12).default(0),
       })
-      .default({ skipDays: [] }),
+      .default({ skipDays: [], dayStartHour: 0 }),
+    /** true면 개발 서버(astro dev)에서만 보인다 — 운영 빌드와 R2 업로드(pnpm photos:upload)에서 빠진다 */
+    draft: z.boolean().default(false),
   })
   .refine((t) => t.start <= t.end, { message: 'start가 end보다 늦습니다', path: ['end'] });
 

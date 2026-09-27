@@ -1,0 +1,21 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/saga-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: SAGA
+subtitle: Three Days in Saga
+subtitleKo: 사가에서 보낸 3일
+description: 바다 위의 붉은 도리이와 온천 마을. 일본 사가 여행 기록 (2026.08.19 – 2026.08.21).
+country: Japan
+start: 2026-08-19
+end: 2026-08-21
+# 숙소 대신 공개하는 좌표 — 사가 시내 중심. 실제 숙소(우레시노·사가역 앞)는 trips.local.json zones에만
+base: [130.300, 33.250]
+heroDay: 1
+utcOffset: "+09:00"
+tracks:
+  bbox: [[129.6, 32.8], [130.6, 33.5]] # 사가현 밖(인천·기내)은 버림
+  maxAltitude: 600 # 착륙 직전 기내에서 찍은 사진
+  skipDays: [3] # 3일차는 공항 사진뿐 — 시내 → 공항 → 인천을 잇는 선
+altitudeNote: 바다 위 도리이에서 미후네야마 절벽 아래까지. 사가의 길은 낮고 평평했다.

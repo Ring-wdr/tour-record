@@ -10,7 +10,8 @@
 // - 날짜 구분은 trip.yaml utcOffset(현지 시간) 기준, 1일차 = trip.yaml start
 // - 이전 점에서 시속 180km 이상으로 튄 점은 GPS 오류로 보고 버린다
 // - trip.yaml tracks.skipDays(비행만 있는 날 등)는 제외 — 지도에서 장소를 잇는 선을 그대로 쓴다
-// - trip.yaml tracks.bbox 밖의 점(기내·경유지)은 버린다
+// - trip.yaml tracks.bbox 밖의 점(기내·경유지)과 GPS 고도가 tracks.maxAltitude를 넘는 점(착륙 직전 기내)은 버린다
+// - trip.yaml tracks.dayStartHour: 현지 그 시각 전 사진은 전날로 친다 (자정 넘어 도착한 첫날 등)
 // - 프라이버시 구역: trips.local.json(git 제외)의 zones 반경 안의 점은 모두 버린다
 //   (숙소 위치가 경로 끝점으로 드러나지 않도록 — Strava의 privacy zone과 같은 방식)
 import { readdirSync, writeFileSync } from 'node:fs';
@@ -77,18 +78,19 @@ for (const slug of selectedSlugs()) {
       .parse(join(SRC, f), {
         gps: true,
         reviveValues: false,
-        pick: ['DateTimeOriginal', 'OffsetTimeOriginal', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef'],
+        pick: ['DateTimeOriginal', 'OffsetTimeOriginal', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'GPSAltitude'],
       })
       .catch(() => null);
     if (e?.latitude == null) continue;
     const t = utcMs(e.DateTimeOriginal, e.OffsetTimeOriginal, localOff);
     if (t == null) continue;
+    if (opt.maxAltitude != null && e.GPSAltitude > opt.maxAltitude) continue;
     pts.push({ t, lng: e.longitude, lat: e.latitude });
   }
   pts.sort((a, b) => a.t - b.t);
 
   const dayOf = (t) => {
-    const local = new Date(t + localOff * 60000).toISOString().slice(0, 10);
+    const local = new Date(t + (localOff - (opt.dayStartHour ?? 0) * 60) * 60000).toISOString().slice(0, 10);
     return Math.round((Date.parse(local) - Date.parse(start)) / DAY_MS) + 1;
   };
 

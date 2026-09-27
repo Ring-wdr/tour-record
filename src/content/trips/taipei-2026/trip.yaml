@@ -1,0 +1,21 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/taipei-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: TAIPEI
+subtitle: Four Days in Taipei
+subtitleKo: 타이베이에서 보낸 4일
+description: 비 내리는 북쪽 해안과 101층의 구름. 대만 타이베이 여행 기록 (2026.09.02 – 2026.09.05).
+country: Taiwan
+start: 2026-09-02
+end: 2026-09-05
+# 숙소 대신 공개하는 좌표 — 타이베이 메인역. 실제 숙소(시먼딩 부근)는 trips.local.json zones에만
+base: [121.5170, 25.0478]
+heroDay: 2
+utcOffset: "+08:00"
+tracks:
+  bbox: [[121.0, 24.7], [122.1, 25.4]] # 대만 북부 밖(인천·기내)은 버림
+  maxAltitude: 600 # 기내에서 찍은 사진 (101 전망대는 약 400m)
+  dayStartHour: 5 # 1일차 밤 비행기가 자정 넘어 도착 — 새벽 사진은 1일차 경로로
+altitudeNote: 바닷가 바위에서 안개 낀 산마을, 그리고 101층 전망대까지. 가장 높이 올라간 곳은 산이 아니라 빌딩이었다.

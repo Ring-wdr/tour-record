@@ -26,11 +26,13 @@
 - `src/components/DayChapter.astro` — 하루 = 타이틀 카드(불투명) → 장소 스텝(투명, 뒤에 고정 지도) → 일기 스프레드(종이)
 - `src/scripts/story.ts` — IntersectionObserver로 스텝 진입 시 지도 `flyTo`/`fitBounds`, 경로 그리기 애니메이션, 레일/진행바
 - `src/pages/index.astro` — 여행 목록 (`TripEntry` + `RouteGlyph`: 경로를 날짜 색 선으로 그린 SVG)
-- `integrations/admin/` — 관리자 통합: `index.ts`(dev 전용 라우트·미들웨어·빌드 검사), `api.ts`(`POST /api/admin/trips`: 같은 스키마+`tripIssues`로 검증 → trip.yaml·dayXX.md 쓰기, 로컬 설정은 trips.local.json), `serialize.ts`(기존 파일과 같은 YAML 모양)
-- `src/admin/` — 관리자 페이지(`pages/`)와 폼(`editor.ts`: 상태 객체 → 폼, 입력칸 `data-k` = 상태 경로, 초안은 localStorage, 지도 클릭으로 좌표 입력)
+- `integrations/admin/` — 관리자 통합: `index.ts`(dev 전용 라우트·미들웨어·빌드 검사), `api.ts`(검증 `POST /trips?dryRun=1` → 사진 한 장씩 `PUT /photos/<slug>/dayXX/<이름>`(변환) → `POST /trips`(photos.json·og.jpg → R2 업로드 → 성공하면 trip.yaml·dayXX.md 쓰기), 로컬 설정은 trips.local.json), `serialize.ts`(기존 파일과 같은 YAML 모양)
+- `src/admin/` — 관리자 페이지(`pages/`)와 폼(`editor.ts`: 상태 객체 → 폼, 입력칸 `data-k` = 상태 경로, 초안은 localStorage, 지도 클릭으로 좌표 입력). 사진은 고른 `File`을 메모리 Map에 그대로 두고 초안에는 설명만 저장 → 새로고침하면 "파일 다시 선택"
+- `scripts/lib/photo.mjs`(변환: 2400px JPEG + 1200px WebP, EXIF 제거) · `scripts/lib/r2.mjs`(R2 업로드) — CLI(`pnpm photos`, `photos:upload`)와 관리자가 같이 쓴다
 - `scripts/copy-maplibre-worker.mjs` — MapLibre 6 워커를 `public/vendor/`로 복사 (predev/prebuild에서 자동 실행)
 
 ## 규칙
+- 관리자에서 "여행 만들기"를 누르면 사진이 **원격 R2 버킷에 바로 올라간다.** R2 업로드가 실패하면 md는 쓰지 않는다(다시 누르면 이어서). md를 쓰는 순간 dev 서버가 페이지를 새로고침하므로, 완료 화면은 sessionStorage 표시로 새로고침 뒤에 다시 그린다
 - 관리자 화면은 **새 여행 만들기만** 한다. 기존 여행 수정은 여행 폴더의 파일을 직접 고친다
 - `astro.config.mjs`나 `integrations/`를 고쳐 dev 서버가 스스로 재시작하면, 그 뒤로 콘텐츠 변경(새 여행 폴더·md 수정)을 감지하지 못한다(Astro 7.3 dev 서버 동작). 이럴 땐 dev 서버를 껐다 켠다
 - 좌표는 `[경도, 위도]`. 확인되지 않은 좌표는 `approx: true` (개발 서버에서 "좌표 대략치" 배지로 보임)
@@ -55,6 +57,7 @@
 - 사진 선정은 dayXX.md의 `photos`/`cover`가 기준. 경로는 `/photos/<slug>/dayXX/<원본파일명>.jpg` (checkTrip이 확인). R2 키 = URL 경로에서 앞의 `/`만 뺀 것
 - `pnpm photos` → md에 적힌 사진만 원본에서 찾아 `public/photos/<slug>/dayXX/`에 `<이름>.jpg`(2400px, 라이트박스) + `<이름>-md.webp`(1200px, 카드)로 변환, EXIF 전부 제거
 - 변환된 사진은 git에 넣지 않는다 (`.gitignore`). 사진 크기는 여행 폴더의 `photos.json`(커밋됨)에 있어 사진 파일 없이도 빌드된다
+- 새 여행의 사진은 관리자 화면에서 파일로 올린다(변환·EXIF 제거·R2까지 한 번에, 파일 이름은 원본 이름에서 영문·숫자·`_-`만). 원본 폴더에서 md 경로로 고르는 방식(`pnpm photos`)은 기존 여행용
 - 사진 추가/변경 순서: dayXX.md 수정 → `pnpm photos` → `pnpm photos:upload`(바뀐 파일만 R2에 업로드) → `pnpm cf:deploy`
 - 로컬에서 R2까지 확인: `pnpm photos:upload -- --local` → `pnpm cf:preview`
 - 링크 미리보기 `/photos/<slug>/og.jpg`(1200×630)는 `pnpm photos`가 trip.yaml `heroDay`의 표지(첫 화면 사진)로 만든다. `/`는 가장 최근 여행의 것을 쓴다
@@ -75,7 +78,8 @@
 3. ~~Cloudflare 이전: Worker `tour-record`, R2 `tour-record-photos`, 옛 주소는 301 리다이렉트 Worker~~
 4. ~~메인 목록 페이지 (`src/pages/index.astro` + `TripEntry`·`RouteGlyph`: 여행별 표지·통계·경로 선 그림)~~
 5. ~~관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장~~
-6. 관리자: 원본 사진 폴더에서 시간대별 썸네일로 사진 고르기(EXIF 시각·GPS로 장소 좌표 자동), 기존 여행 수정, "발행" 버튼(photos → upload → deploy)
+6. ~~관리자: 사진 파일 업로드 → 변환 → R2~~
+7. 관리자: 사진 EXIF 시각·GPS로 장소 좌표·시각 자동 채우기(업로드 전에 브라우저에서 읽기), 기존 여행 수정, "발행" 버튼(deploy)
 
 ## 로드맵 — 알마티
 1. ~~스키마 + 더미 데이터 + 스크롤 지도 초안~~

@@ -1,5 +1,7 @@
 // 새 여행 폼 (dev 전용 /admin/new). 상태 객체 하나를 그대로 그리고, 입력칸은 data-k 경로로 상태에 묶는다.
 // 날짜 수는 시작일~끝일로 정해지고, 저장하면 /api/admin/trips가 같은 zod 스키마로 검증한다.
+// 사진은 작성 중에는 브라우저 메모리에 File 그대로 두고(초안에는 설명만 저장),
+// "여행 만들기"를 누르면 검증 → 한 장씩 서버로 보내 변환 → R2 업로드 → md 쓰기 순서로 처리한다.
 import { Map as MapLibre, Marker, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -9,15 +11,16 @@ setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 /* 상태                                                                 */
 /* ------------------------------------------------------------------ */
 
+/** 사진 한 장 — 파일 자체는 files(Map)에 id로, 초안(localStorage)에는 이 메타데이터만 */
+type PhotoEntry = { id: string; fileName: string; alt: string; caption: string };
 type Stop = {
   id: string; name: string; nameEn: string; lng: string; lat: string; approx: boolean; time: string;
   elevation: string; kind: string; zoom: string; pitch: string; bearing: string; note: string;
-  /** 한 줄에 한 장: `파일명 | 설명 | 캡션` */
-  photos: string;
+  photos: PhotoEntry[];
 };
 type Day = {
   title: string; titleEn: string; lede: string; accent: string; from: string; to: string; driveKm: string;
-  fromBase: boolean; toBase: boolean; spotlightCountry: boolean; coverSrc: string; coverAlt: string;
+  fromBase: boolean; toBase: boolean; spotlightCountry: boolean; cover: PhotoEntry | null;
   stops: Stop[]; body: string;
 };
 type State = {
@@ -43,13 +46,13 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 
 const blankStop = (): Stop => ({
   id: '', name: '', nameEn: '', lng: '', lat: '', approx: false, time: '', elevation: '', kind: 'city',
-  zoom: '13', pitch: '40', bearing: '170', note: '', photos: '',
+  zoom: '13', pitch: '40', bearing: '170', note: '', photos: [],
 });
 const blankDay = (i: number): Day => {
   const [accent, from, to] = PALETTE[i % PALETTE.length];
   return {
     title: '', titleEn: '', lede: '', accent, from, to, driveKm: '', fromBase: i > 0, toBase: true,
-    spotlightCountry: false, coverSrc: '', coverAlt: '', stops: [blankStop()], body: '',
+    spotlightCountry: false, cover: null, stops: [blankStop()], body: '',
   };
 };
 const blankState = (): State => ({
@@ -61,7 +64,16 @@ const blankState = (): State => ({
 function loadDraft(): State {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
-    if (raw) return { ...blankState(), ...JSON.parse(raw) };
+    if (raw) {
+      const st: State = { ...blankState(), ...JSON.parse(raw) };
+      for (const d of st.days as any[]) {
+        d.cover ??= null;
+        delete d.coverSrc;
+        delete d.coverAlt;
+        for (const s of d.stops) if (!Array.isArray(s.photos)) s.photos = [];
+      }
+      return st;
+    }
   } catch {}
   return blankState();
 }
@@ -75,6 +87,40 @@ const saveDraft = () => {
     } catch {}
   }, 300);
 };
+
+/* ------------------------------------------------------------------ */
+/* 사진 파일 — 고른 File을 그대로 메모리에 보관                            */
+/* ------------------------------------------------------------------ */
+
+const ACCEPT = 'image/jpeg,image/png,image/webp';
+/** PhotoEntry.id → 고른 File. 새로고침하면 사라진다 (초안에는 설명만 남고 "다시 선택"으로 표시) */
+const files = new Map<string, File>();
+/** 미리보기 objectURL (File마다 한 번만 만든다) */
+const thumbs = new Map<string, string>();
+const thumbOf = (id: string) => {
+  const file = files.get(id);
+  if (!file) return '';
+  if (!thumbs.has(id)) thumbs.set(id, URL.createObjectURL(file));
+  return thumbs.get(id)!;
+};
+function newEntry(file: File): PhotoEntry {
+  const id = crypto.randomUUID();
+  files.set(id, file);
+  return { id, fileName: file.name, alt: '', caption: '' };
+}
+function forget(entry: PhotoEntry | null) {
+  if (!entry) return;
+  files.delete(entry.id);
+  const url = thumbs.get(entry.id);
+  if (url) URL.revokeObjectURL(url);
+  thumbs.delete(entry.id);
+}
+const isImage = (f: File) => ACCEPT.split(',').includes(f.type);
+let finished = false;
+// 고른 사진이 있으면 페이지를 떠날 때 경고 (파일은 초안에 저장되지 않는다)
+addEventListener('beforeunload', (e) => {
+  if (files.size && !finished) e.preventDefault();
+});
 
 /** "days.0.stops.1.name" 같은 경로로 읽고 쓰기 */
 const getAt = (path: string): any => path.split('.').reduce<any>((o, k) => o?.[k], state);
@@ -142,6 +188,62 @@ const coords = (lngK: string, latK: string, label: string, req = false, hint?: s
     ${hint ? `<em>${esc(hint)}</em>` : ''}
   </div>`;
 
+/** 사진 카드 한 장 — 미리보기, 파일 이름, 설명·캡션, 순서·삭제 */
+function photoCard(path: string, ph: PhotoEntry, tools: string) {
+  const url = thumbOf(ph.id);
+  const thumb = url
+    ? `<img src="${url}" alt="" loading="lazy" decoding="async">`
+    : `<label class="ed-photo-missing" title="새로고침하면 파일이 사라진다">파일 다시 선택<input type="file" accept="${ACCEPT}" data-photo-reattach="${ph.id}" hidden></label>`;
+  return `
+  <div class="ed-photo${url ? '' : ' missing'}" data-f="${path}">
+    <div class="ed-photo-thumb">${thumb}</div>
+    <div class="ed-photo-meta">
+      <small title="${esc(ph.fileName)}">${esc(ph.fileName)}</small>
+      <input data-k="${path}.alt" value="${esc(ph.alt)}" placeholder="설명 (비우면 기본값)">
+      <input data-k="${path}.caption" value="${esc(ph.caption)}" placeholder="캡션 (선택)">
+    </div>
+    <div class="ed-photo-tools">${tools}</div>
+  </div>`;
+}
+const photoInput = (attr: string, multiple: boolean) =>
+  `<input type="file" accept="${ACCEPT}"${multiple ? ' multiple' : ''} ${attr} hidden>`;
+
+function photosField(i: number, j: number) {
+  const p = `days.${i}.stops.${j}.photos`;
+  const list = state.days[i].stops[j].photos;
+  const cards = list.map((ph, k) =>
+    photoCard(
+      `${p}.${k}`,
+      ph,
+      `<button type="button" class="btn" data-act="photo-move" data-path="${p}" data-k="${k}" data-d="-1" ${k === 0 ? 'disabled' : ''} title="앞으로">←</button>
+       <button type="button" class="btn" data-act="photo-move" data-path="${p}" data-k="${k}" data-d="1" ${k === list.length - 1 ? 'disabled' : ''} title="뒤로">→</button>
+       <button type="button" class="btn" data-act="photo-del" data-path="${p}" data-k="${k}" title="빼기">✕</button>`,
+    ),
+  );
+  return `
+  <div class="ed-field wide" data-f="${p}">
+    <span>사진 <em class="inline">${list.length}장 · 장소 카드에는 앞의 3장 · 설명을 비우면 장소 이름</em></span>
+    <div class="ed-photos" data-drop="${p}">
+      ${cards.join('')}
+      <label class="ed-photo-add">${photoInput(`data-photo-add="${p}"`, true)}<b>+</b><span>사진 추가<br><small>여러 장 · 끌어다 놓기</small></span></label>
+    </div>
+  </div>`;
+}
+
+/** 날짜 표지 사진 한 장 */
+function coverField(i: number) {
+  const p = `days.${i}.cover`;
+  const cover = state.days[i].cover;
+  const body = cover
+    ? photoCard(p, cover, `<button type="button" class="btn" data-act="cover-del" data-i="${i}" title="빼기">✕</button>`)
+    : `<label class="ed-photo-add">${photoInput(`data-cover-add="${i}"`, false)}<b>+</b><span>표지 사진<br><small>한 장 · 끌어다 놓기</small></span></label>`;
+  return `
+  <div class="ed-field wide" data-f="${p}">
+    <span>표지 사진 <em class="inline">타이틀 카드 배경 · 설명을 비우면 날짜 제목</em></span>
+    <div class="ed-photos" data-drop="${p}">${body}</div>
+  </div>`;
+}
+
 function stopHtml(i: number, j: number, n: number) {
   const p = `days.${i}.stops.${j}`;
   const s = state.days[i].stops[j];
@@ -171,14 +273,7 @@ function stopHtml(i: number, j: number, n: number) {
       ${field(`${p}.pitch`, { label: 'pitch (0–75)', type: 'number', attrs: 'min="0" max="75"' })}
       ${field(`${p}.bearing`, { label: 'bearing', type: 'number', hint: '시내는 160~180 (산을 배경으로)' })}
       ${field(`${p}.note`, { label: '장소 카드 문구', type: 'textarea', wide: true })}
-      ${field(`${p}.photos`, {
-        label: '사진',
-        type: 'textarea',
-        wide: true,
-        mono: true,
-        placeholder: '20260912_121051 | 빅 알마티 호수 전경 | 캡션(선택)',
-        hint: '한 줄에 한 장: 파일명 | 설명 | 캡션. 파일명만 쓰면 /photos/<slug>/dayXX/<파일명>.jpg. 설명을 비우면 장소 이름. 카드에는 앞의 3장',
-      })}
+      ${photosField(i, j)}
     </div>
   </div>`;
 }
@@ -195,8 +290,7 @@ function dayHtml(i: number) {
           ${field(`${p}.title`, { label: '제목', req: true, placeholder: '사과의 도시에 내리다' })}
           ${field(`${p}.titleEn`, { label: '영문 제목', req: true, placeholder: 'Arrival in the City of Apples' })}
           ${field(`${p}.lede`, { label: '리드 문장', type: 'textarea', wide: true, attrs: '2' })}
-          ${field(`${p}.coverSrc`, { label: '표지 사진', mono: true, placeholder: '20260911_191116', hint: '파일명만 쓰면 이 날 폴더 경로로' })}
-          ${field(`${p}.coverAlt`, { label: '표지 설명', placeholder: '구름 위의 일몰' })}
+          ${coverField(i)}
           ${field(`${p}.accent`, { label: '날짜 색 (경로·강조)', type: 'color' })}
           ${field(`${p}.from`, { label: '플레이스홀더 색 1', type: 'color' })}
           ${field(`${p}.to`, { label: '플레이스홀더 색 2', type: 'color' })}
@@ -378,6 +472,50 @@ form.addEventListener('input', (e) => {
   else if (/\.accent$/.test(k)) (el.closest('.ed-day') as HTMLElement)?.style.setProperty('--accent', el.value);
 });
 
+/** 고른 파일을 사진 목록(…photos) 또는 표지(…cover)에 넣는다 */
+function addFiles(target: string, list: FileList | File[]) {
+  const picked = [...list].filter(isImage);
+  const skipped = [...list].length - picked.length;
+  if (skipped) alert(`${skipped}개는 JPEG·PNG·WebP가 아니라 뺐다 (HEIC는 휴대폰에서 JPEG로 바꿔 올린다)`);
+  if (!picked.length) return;
+  if (target.endsWith('.cover')) {
+    const day = state.days[+target.split('.')[1]];
+    forget(day.cover);
+    day.cover = newEntry(picked[0]);
+  } else {
+    (getAt(target) as PhotoEntry[]).push(...picked.map(newEntry));
+  }
+  saveDraft();
+  renderDays();
+}
+
+form.addEventListener('change', (e) => {
+  const input = e.target as HTMLInputElement;
+  if (input.type !== 'file') return;
+  const { photoAdd, coverAdd, photoReattach } = input.dataset;
+  if (photoAdd) addFiles(photoAdd, input.files!);
+  else if (coverAdd) addFiles(`days.${coverAdd}.cover`, input.files!);
+  else if (photoReattach && input.files?.[0] && isImage(input.files[0])) {
+    files.set(photoReattach, input.files[0]);
+    renderDays();
+  }
+});
+
+form.addEventListener('dragover', (e) => {
+  const zone = (e.target as HTMLElement).closest<HTMLElement>('[data-drop]');
+  if (!zone || !e.dataTransfer?.types.includes('Files')) return;
+  e.preventDefault();
+  zone.classList.add('dropping');
+});
+form.addEventListener('dragleave', (e) => (e.target as HTMLElement).closest('[data-drop]')?.classList.remove('dropping'));
+form.addEventListener('drop', (e) => {
+  const zone = (e.target as HTMLElement).closest<HTMLElement>('[data-drop]');
+  if (!zone || !e.dataTransfer?.files.length) return;
+  e.preventDefault();
+  zone.classList.remove('dropping');
+  addFiles(zone.dataset.drop!, e.dataTransfer.files);
+});
+
 form.addEventListener('change', (e) => {
   const el = e.target as HTMLInputElement;
   const k = el.dataset.k;
@@ -434,8 +572,25 @@ document.addEventListener('click', (e) => {
       [stops[a], stops[b]] = [stops[b], stops[a]];
       break;
     }
+    case 'photo-move': {
+      const list = getAt(btn.dataset.path!) as PhotoEntry[];
+      const a = +btn.dataset.k!;
+      const b = a + +btn.dataset.d!;
+      [list[a], list[b]] = [list[b], list[a]];
+      break;
+    }
+    case 'photo-del': {
+      const list = getAt(btn.dataset.path!) as PhotoEntry[];
+      forget(list.splice(+btn.dataset.k!, 1)[0]);
+      break;
+    }
+    case 'cover-del':
+      forget(state.days[+i!].cover);
+      state.days[+i!].cover = null;
+      break;
     case 'clear-draft':
-      if (!confirm('입력한 초안을 모두 지울까요?')) return;
+      if (!confirm('입력한 초안을 모두 지울까요? (고른 사진도 빠진다)')) return;
+      for (const d of state.days) [d.cover, ...d.stops.flatMap((s) => s.photos)].forEach(forget);
       state = blankState();
       document.getElementById('issues')!.hidden = true;
       saveDraft();
@@ -455,9 +610,33 @@ document.addEventListener('click', (e) => {
 const num = (s: string) => (s === '' || s == null ? undefined : Number(s));
 const slugify = (s: string) =>
   s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-/** 파일명만 적었으면 /photos/<slug>/dayXX/<이름>.jpg */
-const photoSrc = (s: string, i: number) =>
-  /^(https?:\/\/|\/)/.test(s) ? s : `/photos/${state.slug}/day${pad2(i + 1)}/${s.replace(/\.jpe?g$/i, '')}.jpg`;
+/**
+ * 사진 경로 /photos/<slug>/dayXX/<이름>.jpg — 이름은 원본 파일 이름(확장자 빼고, 영문·숫자·_- 만).
+ * 같은 날 안에서 이름이 겹치면 -2, -3… 을 붙이고, 같은 파일을 두 번 쓰면(표지 + 장소) 한 번만 올린다.
+ */
+function photoSrcs(): Map<string, string> {
+  const out = new Map<string, string>();
+  visibleDays().forEach((d, i) => {
+    const byFile = new Map<string, string>();
+    const used = new Set<string>();
+    for (const ph of [d.cover, ...d.stops.flatMap((s) => s.photos)]) {
+      if (!ph) continue;
+      const f = files.get(ph.id);
+      const same = f ? `${f.name}|${f.size}|${f.lastModified}` : ph.id;
+      let src = byFile.get(same);
+      if (!src) {
+        const stem = ph.fileName.replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '') || 'photo';
+        let name = stem;
+        for (let n = 2; used.has(name); n++) name = `${stem}-${n}`;
+        used.add(name);
+        src = `/photos/${state.slug.trim()}/day${pad2(i + 1)}/${name}.jpg`;
+        byFile.set(same, src);
+      }
+      out.set(ph.id, src);
+    }
+  });
+  return out;
+}
 
 /** 장소 id — 비어 있으면 영문 이름에서 만든다. 초안에는 저장하지 않고(이름을 고치면 따라 바뀌게) 입력칸 placeholder로만 보인다 */
 function stopIds(): string[][] {
@@ -475,8 +654,13 @@ function stopIds(): string[][] {
   );
 }
 
-function payload() {
+function payload(srcs: Map<string, string>) {
   const ids = stopIds();
+  const photo = (ph: PhotoEntry, fallbackAlt: string) => ({
+    src: srcs.get(ph.id)!,
+    alt: ph.alt.trim() || fallbackAlt,
+    ...(ph.caption.trim() && { caption: ph.caption.trim() }),
+  });
   const nums = (s: string) => s.split(/[\s,]+/).filter(Boolean).map(Number);
   const bbox = nums(state.bbox);
   return {
@@ -509,7 +693,7 @@ function payload() {
         fromBase: d.fromBase,
         toBase: d.toBase,
         spotlightCountry: d.spotlightCountry,
-        cover: d.coverSrc.trim() ? { src: photoSrc(d.coverSrc.trim(), i), alt: d.coverAlt || d.title } : undefined,
+        cover: d.cover ? photo(d.cover, d.title) : undefined,
         stops: d.stops.map((s, j) => ({
           id: ids[i][j],
           name: s.name,
@@ -521,11 +705,7 @@ function payload() {
           kind: s.kind,
           camera: { zoom: num(s.zoom) ?? 13, pitch: num(s.pitch) ?? 0, bearing: num(s.bearing) ?? 0 },
           note: s.note,
-          photos: s.photos
-            .split('\n')
-            .map((l) => l.split('|').map((x) => x.trim()))
-            .filter(([src]) => src)
-            .map(([src, alt, caption]) => ({ src: photoSrc(src, i), alt: alt || s.name, ...(caption && { caption }) })),
+          photos: s.photos.map((ph) => photo(ph, s.name)),
         })),
       },
       body: d.body,
@@ -549,12 +729,12 @@ function fieldKey(path: string): string {
   if (p[0] === 'days') {
     const d = `days.${p[1]}`;
     if (p[2] === 'tone') return `${d}.${p[3] ?? 'accent'}`;
-    if (p[2] === 'cover') return `${d}.${p[3] === 'alt' ? 'coverAlt' : 'coverSrc'}`;
+    if (p[2] === 'cover') return `${d}.cover`;
     if (p[2] === 'stops' && p[3] != null) {
       const s = `${d}.stops.${p[3]}`;
       if (p[4] === 'coords') return `${s}.lng`;
       if (p[4] === 'camera') return `${s}.${p[5] ?? 'zoom'}`;
-      if (p[4] === 'photos') return `${s}.photos`;
+      if (p[4] === 'photos') return p[5] != null ? `${s}.photos.${p[5]}` : `${s}.photos`;
       return p[4] ? `${s}.${p[4]}` : s;
     }
     return p[2] && p[2] !== 'day' && p[2] !== 'date' ? `${d}.${p[2]}` : d;
@@ -565,7 +745,11 @@ function fieldLabel(k: string) {
   const el = document.querySelector(`[data-f="${k}"]`);
   const own = el?.querySelector(':scope > span')?.textContent?.replace('*', '').trim();
   const m = k.match(/^days\.(\d+)(?:\.stops\.(\d+))?/);
-  const where = m ? `Day ${pad2(+m[1] + 1)}${m[2] != null ? ` · 장소 ${+m[2] + 1}` : ''}` : '여행 정보';
+  const ph = k.match(/\.photos\.(\d+)$/);
+  const where = m
+    ? `Day ${pad2(+m[1] + 1)}${m[2] != null ? ` · 장소 ${+m[2] + 1}` : ''}${ph ? ` · 사진 ${+ph[1] + 1}` : k.endsWith('.cover') ? ' · 표지 사진' : ''}`
+    : '여행 정보';
+  if (ph || k.endsWith('.cover')) return where;
   return own ? `${where} · ${own}` : where;
 }
 
@@ -598,59 +782,124 @@ document.getElementById('issues')!.addEventListener('click', (e) => {
   el?.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
 });
 
+const api = async (url: string, init: RequestInit) => {
+  const res = await fetch(url, init);
+  const json = await res.json().catch(() => ({ error: res.statusText }));
+  return { res, json };
+};
+/** 이번 페이지에서 이미 서버로 보낸 사진 (src|파일) — R2 실패 후 다시 누를 때 건너뛴다 */
+const sent = new Set<string>();
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const body = payload();
   const btn = document.getElementById('submit') as HTMLButtonElement;
   const status = document.getElementById('status')!;
+  const say = (t: string) => (status.textContent = t);
+  const fail = (issues: { path: string; message: string }[]) => {
+    say('');
+    showIssues(issues);
+  };
+  const srcs = photoSrcs();
+  const body = payload(srcs);
   btn.disabled = true;
-  status.textContent = '검증하고 저장하는 중…';
   try {
-    const res = await fetch('/api/admin/trips', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const json = await res.json();
-    if (res.status === 422) {
-      status.textContent = '';
-      showIssues(json.issues);
-      return;
+    // 1) 검증 — 사진을 올리기 전에 입력 오류부터
+    say('검증하는 중…');
+    let r = await api('/api/admin/trips?dryRun=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (r.res.status === 422) return fail(r.json.issues);
+    if (!r.res.ok) throw new Error(r.json.error);
+
+    // 2) 파일이 없는 사진 (새로고침으로 사라진 것)
+    const entries = visibleDays().flatMap((d, i) => [
+      ...(d.cover ? [{ path: `days.${i}.cover`, ph: d.cover }] : []),
+      ...d.stops.flatMap((s, j) => s.photos.map((ph, k) => ({ path: `days.${i}.stops.${j}.photos.${k}`, ph }))),
+    ]);
+    const lost = entries.filter((x) => !files.has(x.ph.id));
+    if (lost.length) return fail(lost.map((x) => ({ path: x.path, message: '파일이 없다 — 다시 선택하세요' })));
+
+    // 3) 사진을 한 장씩 서버로 — 변환(2400px JPEG + 1200px WebP, EXIF 제거)
+    const uploads = new Map<string, { file: File; path: string }>();
+    for (const x of entries) {
+      const src = srcs.get(x.ph.id)!;
+      if (!uploads.has(src)) uploads.set(src, { file: files.get(x.ph.id)!, path: x.path });
     }
-    if (!res.ok) throw new Error(json.error ?? res.statusText);
-    showDone(json.slug, json.files);
-    // 저장된 여행은 초안에서 지운다 (메모리 상태도 비워 이후 입력이 옛 초안을 되살리지 않게)
-    clearTimeout(saveTimer);
-    state = blankState();
+    let n = 0;
+    for (const [src, { file, path }] of uploads) {
+      n++;
+      const key = `${src}|${file.name}|${file.size}|${file.lastModified}`;
+      if (sent.has(key)) continue;
+      say(`사진 변환 중 ${n} / ${uploads.size} — ${file.name}`);
+      const p = await api(`/api/admin${src.replace(/\.jpg$/, '')}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'image/jpeg' },
+        body: file,
+      });
+      if (!p.res.ok) return fail([{ path, message: p.json.error ?? '사진을 올리지 못했다' }]);
+      sent.add(key);
+    }
+
+    // 4) R2 업로드 + 파일 쓰기
+    // 파일을 쓰면 dev 서버가 열린 페이지를 모두 새로고침한다 → 무엇을 저장 중이었는지 남겨 두고, 떠날 때 경고도 끈다
+    // (사진은 이미 서버에 있으므로 새로고침돼도 잃는 것이 없다)
+    finished = true;
     try {
-      localStorage.removeItem(DRAFT_KEY);
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify({ slug: body.slug, title: state.title, at: Date.now() }));
     } catch {}
+    say(uploads.size ? `R2 버킷에 사진 ${uploads.size}장 올리는 중… (몇십 초 걸릴 수 있다)` : '파일 쓰는 중…');
+    r = await api('/api/admin/trips', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.res.ok) {
+      finished = false;
+      clearPending();
+      if (r.res.status === 422) return fail(r.json.issues);
+      throw new Error(r.json.error ?? r.res.statusText);
+    }
+    complete(r.json.slug, state.title, r.json.files, `${r.json.photos}장 — R2 ${r.json.r2.bucket}에 변환본 ${r.json.r2.uploaded}개 새로 올림`);
   } catch (err) {
-    status.textContent = `저장 실패: ${err instanceof Error ? err.message : err}`;
+    say(`저장 실패: ${err instanceof Error ? err.message : err}`);
   } finally {
     btn.disabled = false;
   }
 });
 
-function showDone(slug: string, files: string[]) {
+const PENDING_KEY = 'tour-record:admin:saving';
+const clearPending = () => {
+  try {
+    sessionStorage.removeItem(PENDING_KEY);
+  } catch {}
+};
+
+/**
+ * 저장 끝: 완료 화면 + 초안 지우기 (메모리 상태도 비워 이후 입력이 옛 초안을 되살리지 않게).
+ * 저장 표시(PENDING_KEY)는 남겨 둔다 — 파일마다 새로고침이 한 번씩 더 올 수 있어서, 완료 화면의 버튼을 누르거나 5분이 지나면 지운다
+ */
+function complete(slug: string, title: string, written: string[], photos: string) {
+  clearTimeout(saveTimer);
+  state = blankState();
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {}
+  showDone(slug, title, written, photos);
+}
+
+function showDone(slug: string, title: string, written: string[], photos: string) {
   form.hidden = true;
   document.getElementById('issues')!.hidden = true;
   const done = document.getElementById('done')!;
   const t = `-- --trip ${slug}`;
   done.innerHTML = `
-    <h2>「${esc(state.title)}」 여행을 만들었다</h2>
-    <ul>${files.map((f) => `<li><code>${esc(f)}</code></li>`).join('')}</ul>
+    <h2>「${esc(title)}」 여행을 만들었다</h2>
+    <ul>${written.map((f) => `<li><code>${esc(f)}</code></li>`).join('')}</ul>
+    ${photos ? `<p>사진 ${esc(photos)}</p>` : ''}
     <p><a class="btn primary" href="/trips/${esc(slug)}/" target="_blank">여행 페이지 보기 ↗</a>
-       <a class="btn" href="/admin">여행 목록</a> <a class="btn" href="/admin/new">새 여행 하나 더</a></p>
+       <a class="btn" href="/admin" data-leave>여행 목록</a> <a class="btn" href="/admin/new" data-leave>새 여행 하나 더</a></p>
     <h3>사이트에 올리려면</h3>
     <ol>
-      <li><code>pnpm photos ${t}</code> — 사진 변환${state.source ? '' : ' (원본 폴더: trips.local.json에 source 추가 또는 --src)'}</li>
-      <li><code>pnpm tracks ${t}</code> — 사진 GPS 이동 경로 (선택)</li>
-      <li><code>pnpm photos:upload ${t}</code> — R2 업로드</li>
+      <li><code>pnpm tracks ${t}</code> — 원본 사진 GPS로 이동 경로 (선택, 원본 폴더 필요)</li>
       <li>커밋 → <code>pnpm cf:deploy</code></li>
     </ol>`;
   done.hidden = false;
   done.scrollIntoView({ behavior: 'smooth' });
+  done.querySelectorAll('[data-leave]').forEach((a) => a.addEventListener('click', clearPending));
 }
 
 /* ------------------------------------------------------------------ */
@@ -658,6 +907,22 @@ function showDone(slug: string, files: string[]) {
 const meta: { trips: string[]; geo: string[]; kinds: string[] } = await fetch('/api/admin/meta')
   .then((r) => r.json())
   .catch(() => ({ trips: [], geo: [], kinds: [] }));
+// 저장 도중 새로고침됐으면(파일을 쓰면 dev 서버가 페이지를 새로고침한다) 결과를 확인해 완료 화면으로
+const pending = (() => {
+  try {
+    const p = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? 'null') as { slug: string; title: string; at: number } | null;
+    return p && Date.now() - p.at < 5 * 60_000 ? p : null;
+  } catch {
+    return null;
+  }
+})();
+if (!pending) clearPending();
+else {
+  const r = await api(`/api/admin/trips/${pending.slug}`, { method: 'GET' });
+  if (r.res.ok) complete(r.json.slug, pending.title, r.json.files, r.json.photos ? `${r.json.photos}장 — R2 업로드 완료` : '');
+  else clearPending(); // 저장이 끝나지 않았다 — 초안으로 이어서 (사진은 다시 선택)
+}
+
 // 옛 초안의 잘못된 날짜(직접 타이핑한 "0002-…" 등)는 비운다
 for (const k of ['start', 'end'] as const) if (state[k] && !validDate(state[k])) state[k] = '';
 syncDays();

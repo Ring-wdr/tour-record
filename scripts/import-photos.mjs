@@ -9,15 +9,15 @@
 //   dayXX/<원본이름>.jpg      긴 변 2400px — 라이트박스/표지용
 //   dayXX/<원본이름>-md.webp  긴 변 1200px — 카드/모자이크용
 //   og.jpg                    1200×630 — 링크 미리보기 (trip.yaml heroDay의 표지 = 첫 화면 사진)
-// sharp는 기본적으로 메타데이터를 쓰지 않으므로 EXIF(GPS 포함)는 모두 제거된다.
+// 변환은 scripts/lib/photo.mjs (관리자 화면 업로드와 같은 설정). EXIF(GPS 포함)는 모두 제거된다.
 //
 // 추가로:
 // - 여행 폴더의 photos.json(커밋됨)에 사진별 크기를 기록 → 사진 파일 없이도 빌드 가능 (사진은 R2에서 서빙)
 // - md에서 빠진 사진의 변환본은 public/photos/<slug>에서 지운다 (R2에 올라가지 않도록)
 import { readFileSync, readdirSync, existsSync, mkdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import sharp from 'sharp';
 import { args, argVal, selectedSlugs, loadTrip, frontmatter } from './lib/trips.mjs';
+import { convertPhoto, makeOg, photoSize } from './lib/photo.mjs';
 
 const FORCE = args.includes('--force');
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -49,7 +49,6 @@ for (const slug of selectedSlugs()) {
       continue;
     }
     const [day, name] = key.split('/');
-    mkdirSync(join(OUT_DIR, day), { recursive: true });
     const full = join(OUT_DIR, day, `${name}.jpg`);
     const md = join(OUT_DIR, day, `${name}-md.webp`);
     const fresh = (p) => existsSync(p) && statSync(p).mtimeMs >= statSync(src).mtimeMs;
@@ -57,13 +56,7 @@ for (const slug of selectedSlugs()) {
       skipped++;
       continue;
     }
-    // failOn: 'none' — 일부 삼성 모션포토 JPEG은 엄격 모드에서 디코딩 오류가 난다
-    const base = () => sharp(src, { failOn: 'none' }).rotate();
-    await base()
-      .resize(2400, 2400, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 82, mozjpeg: true, progressive: true })
-      .toFile(full);
-    await base().resize(1200, 1200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(md);
+    await convertPhoto(src, join(OUT_DIR, day), name);
     made++;
   }
 
@@ -72,8 +65,7 @@ for (const slug of selectedSlugs()) {
   for (const [key] of wanted) {
     const full = join(OUT_DIR, `${key}.jpg`);
     if (!existsSync(full)) continue;
-    const m = await sharp(full).metadata();
-    sizes[`/photos/${slug}/${key}.jpg`] = { w: m.width, h: m.height };
+    sizes[`/photos/${slug}/${key}.jpg`] = await photoSize(full);
   }
   writeFileSync(join(trip.dir, 'photos.json'), JSON.stringify(sizes, null, 1) + '\n');
 
@@ -96,11 +88,7 @@ for (const slug of selectedSlugs()) {
   const coverName = existsSync(heroFile) ? frontmatter(heroFile).cover?.src?.match(/\/([\w-]+)\.jpg$/)?.[1] : undefined;
   if (coverName && existsSync(join(SRC, `${coverName}.jpg`))) {
     mkdirSync(OUT_DIR, { recursive: true });
-    await sharp(join(SRC, `${coverName}.jpg`), { failOn: 'none' })
-      .rotate()
-      .resize(1200, 630, { fit: 'cover', position: 'attention' })
-      .jpeg({ quality: 84, mozjpeg: true })
-      .toFile(join(OUT_DIR, 'og.jpg'));
+    await makeOg(join(SRC, `${coverName}.jpg`), join(OUT_DIR, 'og.jpg'));
   }
 
   console.log(`[photos:${slug}] ${wanted.size} referenced · ${made} converted · ${skipped} up to date · ${removed} unused removed · og.jpg from ${coverName ?? '(none)'}`);

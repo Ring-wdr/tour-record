@@ -268,6 +268,102 @@ import AdminLayout from '../AdminLayout.astro';
     height: 38px;
     padding: 0 12px;
   }
+  /* ---------- photos ---------- */
+  .ed-field > span em.inline {
+    margin-left: 6px;
+  }
+  .ed-photos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 10px;
+    padding: 4px;
+    margin: -4px;
+    border: 1px dashed transparent;
+  }
+  .ed-photos.dropping {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  .ed-photo {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    border: 1px solid #2a2a2e;
+    background: #0b0b0d;
+    min-width: 0;
+  }
+  .ed-photo-thumb {
+    aspect-ratio: 4 / 3;
+    background: #151518;
+    overflow: hidden;
+  }
+  .ed-photo-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .ed-photo-missing {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: #ff8a70;
+    font-size: 12px;
+    border: 1px dashed #ff6b4a;
+    cursor: pointer;
+  }
+  .ed-photo-meta {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+  }
+  .ed-photo-meta small {
+    font: 11px var(--mono);
+    color: var(--film-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .editor .ed-photo-meta input {
+    height: 32px;
+    font-size: 12px;
+  }
+  .ed-photo-tools {
+    display: flex;
+    gap: 4px;
+    padding: 0 8px 8px;
+  }
+  .ed-photo-tools .btn {
+    flex: 1;
+    justify-content: center;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+  .ed-photo-add {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 4px;
+    min-height: 150px;
+    border: 1px dashed #3a3a40;
+    color: var(--film-dim);
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .ed-photo-add:hover {
+    border-color: var(--accent);
+    color: var(--film);
+  }
+  .ed-photo-add b {
+    font-size: 26px;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .ed-photo-add small {
+    font-size: 11px;
+    color: #6f6a62;
+  }
+
   .has-issue input,
   .has-issue select,
   .has-issue textarea,

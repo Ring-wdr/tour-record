@@ -1,0 +1,116 @@
+---
+// 관리자 화면 공통 틀 — dev 서버 전용 (integrations/admin)
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{title} · 관리자</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+KR:wght@400;900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+  </head>
+  <body class="admin">
+    <header class="admin-bar">
+      <a href="/admin" class="brand">TRAVEL RECORDS <span>admin · dev only</span></a>
+      <nav>
+        <a href="/admin">여행 목록</a>
+        <a href="/admin/new">새 여행</a>
+        <a href="/" target="_blank">사이트 ↗</a>
+      </nav>
+    </header>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  body.admin {
+    background: var(--ink);
+    line-height: 1.5;
+  }
+  .admin-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 12px var(--gutter);
+    background: rgb(11 11 13 / 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #222;
+  }
+  .admin-bar .brand {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .admin-bar .brand span {
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-left: 8px;
+  }
+  .admin-bar nav {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+  }
+  .admin-bar nav a {
+    text-decoration: none;
+    color: var(--film-dim);
+  }
+  .admin-bar nav a:hover {
+    color: var(--film);
+  }
+  .admin h1 {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    font-size: clamp(32px, 4vw, 48px);
+    margin: 0;
+  }
+  .admin .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid #3a3a40;
+    background: var(--ink-2);
+    color: var(--film);
+    font: 500 13px var(--sans);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .admin .btn:hover {
+    border-color: var(--film-dim);
+  }
+  .admin .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--ink);
+  }
+  .admin .btn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+</style>

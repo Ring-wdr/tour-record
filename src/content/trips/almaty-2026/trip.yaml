@@ -1,0 +1,25 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/almaty-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: ALMATY
+subtitle: Seven Days in Kazakhstan
+subtitleKo: 카자흐스탄에서 보낸 7일
+description: 카자흐스탄에서 보낸 7일. 카자흐스탄 알마티 여행 기록 (2026.09.11 – 2026.09.17).
+country: Kazakhstan
+start: 2026-09-11
+end: 2026-09-17
+# 숙소 대신 공개하는 좌표 — 알마티 시내 중심. 실제 숙소 위치는 공개하지 않는다
+# (실제 좌표는 git 제외 파일 privacy.local.json에만 있고, 그 주변 GPS 궤적은 pnpm tracks가 잘라낸다)
+# day01 hotel stop 좌표와 같게 유지
+base: [76.945, 43.238]
+# 첫 화면 표지로 쓸 날 (그날의 cover 사진)
+heroDay: 2
+# spotlightCountry인 날의 개요에서 이 나라 밖을 어둡게 가린다 — src/data/geo/<이름>.json
+spotlight: kazakhstan
+utcOffset: "+05:00"
+tracks:
+  bbox: [[70, 35], [85, 56]] # 카자흐스탄 남동부 밖(기내·인천)은 버림
+  skipDays: [1] # 1일차는 비행 — 장소를 이은 비행 경로
+altitudeNote: 빙하 호수와 곤돌라 종점을 지나 사막의 줄무늬 산까지. 일주일 동안 오르내린 높이를 한 줄로 그려봤다.

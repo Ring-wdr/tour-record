@@ -1,85 +1,237 @@
 ---
+// 메인: 여행 목록. 최근 여행부터
 import Base from '../layouts/Base.astro';
-import Hero from '../components/Hero.astro';
-import Stats from '../components/Stats.astro';
-import DayRail from '../components/DayRail.astro';
-import DayChapter from '../components/DayChapter.astro';
-import AltitudeLine from '../components/AltitudeLine.astro';
-import Outro from '../components/Outro.astro';
-import { getDays, tripStats, dayRoute, DAY_TONES, TRIP } from '../lib/trip';
-import tracks from '../data/tracks.json';
-import kazakhstan from '../data/kazakhstan.json';
+import TripEntry from '../components/TripEntry.astro';
+import { SITE } from '../lib/site';
+import { getTrips, ogImage, tripStats } from '../lib/trip';
 
-const days = await getDays();
-const stats = tripStats(days);
+const trips = await getTrips();
+const latest = trips[0];
+const latestCover = latest?.days.find((d) => d.data.day === latest.data.heroDay)?.data.cover;
 
-// 지도 스크립트에 넘길 최소 데이터
-const mapData = {
-  base: TRIP.base,
-  country: { bbox: kazakhstan.bbox, ring: kazakhstan.ring },
-  days: days.map((d, i) => ({
-    day: d.data.day,
-    accent: DAY_TONES[d.data.day].accent,
-    route: dayRoute(d, days[i - 1], (tracks as Record<string, [number, number][]>)[d.data.day]),
-    spotlight: d.data.spotlightCountry,
-    stops: d.data.stops.map((s) => ({ id: s.id, name: s.name, kind: s.kind, coords: s.coords, camera: s.camera })),
-  })),
-};
+const all = trips.map((t) => tripStats(t.days));
+const summary = [
+  { value: trips.length, unit: 'journey' },
+  { value: new Set(trips.map((t) => t.data.country)).size, unit: 'country' },
+  { value: all.reduce((n, s) => n + s.days, 0), unit: 'day' },
+  { value: all.reduce((n, s) => n + s.photos, 0), unit: 'photograph' },
+].map((s) => ({ ...s, unit: s.value === 1 ? s.unit : s.unit === 'country' ? 'countries' : `${s.unit}s` }));
+const years = trips.map((t) => t.data.start.getUTCFullYear());
+const span = years.length ? `${Math.min(...years)}${Math.max(...years) > Math.min(...years) ? ` — ${Math.max(...years)}` : ''}` : '';
 ---
 
 <Base
-  title={`${TRIP.title} — ${TRIP.subtitle}`}
-  description={`${TRIP.subtitleKo}. 카자흐스탄 알마티 여행 기록 (${TRIP.start} – ${TRIP.end}).`}
+  title={`${SITE.title} — ${SITE.titleKo}`}
+  description={`${SITE.titleKo} — ${trips.map((t) => t.data.title).join(' · ')}`}
+  image={latest && latestCover && { src: ogImage(latest.slug), alt: latestCover.alt }}
 >
-  <Hero cover={days[1]} />
-  <Stats stats={stats} />
-  <DayRail days={days} />
+  <header class="mast">
+    <div class="bar bar-top" aria-hidden="true"></div>
+    <div class="bar bar-bottom" aria-hidden="true"></div>
 
-  <div id="map-stage" aria-hidden="true">
-    <div id="map"></div>
-    <div class="map-vignette"></div>
-  </div>
+    <div class="mast-meta mast-meta-top">
+      <span class="eyebrow">A Travel Journal</span>
+      <span class="eyebrow">{span}</span>
+    </div>
 
-  <main id="story">
-    {days.map((day) => <DayChapter day={day} />)}
+    <div class="mast-title">
+      <h1>
+        {
+          SITE.title.split(' ').map((word, w) => (
+            <span class="word">
+              {[...word].map((ch, i) => (
+                <span style={`--i:${w * 6 + i}`}>{ch}</span>
+              ))}
+            </span>
+          ))
+        }
+      </h1>
+      <p class="ko">{SITE.titleKo}</p>
+    </div>
+
+    <div class="mast-meta mast-meta-bottom">
+      <ul class="summary">
+        {
+          summary.map((s) => (
+            <li>
+              <b>{s.value.toLocaleString('en-US')}</b> {s.unit}
+            </li>
+          ))
+        }
+      </ul>
+      <a class="eyebrow scroll-cue" href="#journeys">Scroll <span aria-hidden="true">↓</span></a>
+    </div>
+  </header>
+
+  <main id="journeys" class="journeys">
+    <p class="eyebrow section-label">The Journeys</p>
+    {trips.map((trip, i) => <TripEntry trip={trip} index={i} />)}
   </main>
 
-  <AltitudeLine days={days} />
-  <Outro />
-
-  <script type="application/json" id="trip-data" set:html={JSON.stringify(mapData)} />
+  <footer class="foot">
+    <span class="eyebrow">{SITE.title} · Written by {SITE.author}</span>
+  </footer>
 </Base>
 
 <script>
-  import '../scripts/story';
-  import '../scripts/lightbox';
+  // 스크롤 진입 시 떠오르기 (여행 페이지의 story.ts와 같은 규칙, 지도 없이)
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);
+      }
+    },
+    { threshold: 0.2 },
+  );
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
 </script>
 
 <style>
-  #map-stage {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    opacity: 0;
-    transition: opacity 0.8s;
-  }
-  :global(body.in-story) #map-stage {
-    opacity: 1;
-  }
-  #map {
-    position: absolute;
-    inset: 0;
-  }
-  .map-vignette {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse at 40% 50%, transparent 45%, rgb(0 0 0 / 0.55)),
-      linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 30%);
-  }
-  #story {
+  /* ---------- Masthead ---------- */
+  .mast {
     position: relative;
-    z-index: 1;
+    height: 100svh;
+    min-height: 560px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 110%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+      var(--ink);
+  }
+  .bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: #000;
+    z-index: 2;
+    animation: letterbox 1.8s 0.2s var(--ease-out) forwards;
+  }
+  .bar-top { top: 0; }
+  .bar-bottom { bottom: 0; }
+  @keyframes letterbox {
+    to { height: 9vh; }
+  }
+
+  .mast-title {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    padding: 0 var(--gutter);
+  }
+  h1 {
+    font-family: var(--serif-display);
+    font-weight: 900;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(56px, 12vw, 200px);
+    line-height: 0.86;
+    letter-spacing: -0.03em;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .word {
+    display: flex;
+  }
+  .word:nth-child(2) {
+    font-style: italic;
+    font-weight: 300;
+  }
+  h1 span span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.3em);
+    filter: blur(12px);
+    animation: letter 1.4s calc(1s + var(--i) * 0.07s) var(--ease-out) forwards;
+  }
+  @keyframes letter {
+    to { opacity: 1; transform: none; filter: blur(0); }
+  }
+  .ko {
+    font-family: var(--serif);
+    font-size: clamp(15px, 1.6vw, 19px);
+    letter-spacing: 0.3em;
+    margin: 1.4em 0 0;
+    opacity: 0;
+    animation: fade 1.4s 2s forwards;
+  }
+  @keyframes fade {
+    to { opacity: 1; }
+  }
+
+  .mast-meta {
+    position: absolute;
+    z-index: 3;
+    left: var(--gutter);
+    right: var(--gutter);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    animation: fade 1s 2.2s forwards;
+  }
+  .mast-meta-top { top: calc(9vh - 28px); }
+  .mast-meta-bottom { bottom: calc(9vh - 30px); }
+  .mast-meta .eyebrow { color: #cfc9be; }
+  .summary {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    margin: 0;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--film-dim);
+  }
+  .summary b {
+    font-weight: 500;
+    color: var(--film);
+  }
+  .scroll-cue {
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .scroll-cue span {
+    display: inline-block;
+    animation: bob 2s infinite;
+  }
+  @keyframes bob {
+    50% { transform: translateY(4px); }
+  }
+
+  /* ---------- Journeys ---------- */
+  .journeys {
+    display: grid;
+    gap: clamp(120px, 20vh, 220px);
+    padding: clamp(80px, 14vh, 160px) var(--gutter) clamp(120px, 20vh, 220px);
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+  .section-label {
+    margin: 0 0 calc(-1 * clamp(60px, 12vh, 140px));
+    padding-bottom: 12px;
+    border-bottom: 1px solid #222;
+  }
+
+  .foot {
+    background: #000;
+    padding: 48px var(--gutter);
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .mast-meta-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .scroll-cue { display: none; }
   }
 </style>

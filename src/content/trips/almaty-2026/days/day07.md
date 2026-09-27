@@ -5,10 +5,11 @@ title: 시장의 냄새, 미술관의 빛
 titleEn: Bazaar, Art & Goodbye
 lede: 과일과 말린 견과가 산처럼 쌓인 시장에서 시작해, 새로 문을 연 미술관을 거쳐 밤 비행기로 떠났다.
 driveKm: 30
+tone: { accent: "#8bd17c", from: "#2b3a1f", to: "#b98a4a" } # 시장과 작별
 # 개요에서는 인천까지의 비행 구간 대신 카자흐스탄만 비춘다
 spotlightCountry: true
 cover:
-  src: /photos/day07/20260917_101203.jpg
+  src: /photos/almaty-2026/day07/20260917_101203.jpg
   alt: 2층에서 내려다본 그린 바자르 중앙 홀
 stops:
   - id: green-bazaar
@@ -21,11 +22,11 @@ stops:
     camera: { zoom: 16, pitch: 55, bearing: -20 }
     note: 1875년부터 이어진 재래시장. 과일, 말린 견과, 말고기 소시지까지. 시식하라며 건네주는 걸 거절하기 어렵다.
     photos:
-      - { src: /photos/day07/20260917_094955.jpg, alt: 과일 가판 }
-      - { src: /photos/day07/20260917_094509.jpg, alt: 시장 입구 }
-      - { src: /photos/day07/20260917_101437.jpg, alt: 시장 2층에서 본 풍경 }
-      - { src: /photos/day07/20260917_102832.jpg, alt: 말린 과일과 견과 }
-      - { src: /photos/day07/20260917_103140.jpg, alt: 말고기 소시지 }
+      - { src: /photos/almaty-2026/day07/20260917_094955.jpg, alt: 과일 가판 }
+      - { src: /photos/almaty-2026/day07/20260917_094509.jpg, alt: 시장 입구 }
+      - { src: /photos/almaty-2026/day07/20260917_101437.jpg, alt: 시장 2층에서 본 풍경 }
+      - { src: /photos/almaty-2026/day07/20260917_102832.jpg, alt: 말린 과일과 견과 }
+      - { src: /photos/almaty-2026/day07/20260917_103140.jpg, alt: 말고기 소시지 }
   - id: lunch
     name: 마지막 점심
     nameEn: Last Lunch
@@ -36,8 +37,8 @@ stops:
     camera: { zoom: 15.5, pitch: 50, bearing: 170 }
     note: 화려한 벽화가 있는 식당에서 맥주 한 잔과 함께.
     photos:
-      - { src: /photos/day07/20260917_115309.jpg, alt: 점심 }
-      - { src: /photos/day07/20260917_114126.jpg, alt: 식당 내부 }
+      - { src: /photos/almaty-2026/day07/20260917_115309.jpg, alt: 점심 }
+      - { src: /photos/almaty-2026/day07/20260917_114126.jpg, alt: 식당 내부 }
   - id: museum-of-arts
     name: 알마티 미술관
     nameEn: Almaty Museum of Arts
@@ -48,12 +49,12 @@ stops:
     camera: { zoom: 15.5, pitch: 50, bearing: 180 }
     note: 새로 문을 연 현대미술관. 중앙아시아 작가들의 작품부터 크리스찬 마클레이의 〈The Clock〉까지.
     photos:
-      - { src: /photos/day07/20260917_131211.jpg, alt: 미술관 앞 조형물 }
-      - { src: /photos/day07/20260917_131150.jpg, alt: 미술관 건물 }
-      - { src: /photos/day07/20260917_135304.jpg, alt: 미술관 아트리움 }
-      - { src: /photos/day07/20260917_143439.jpg, alt: The Clock 전시 }
-      - { src: /photos/day07/20260917_135507.jpg, alt: 전시실 }
-      - { src: /photos/day07/20260917_145207.jpg, alt: 야외 조각 }
+      - { src: /photos/almaty-2026/day07/20260917_131211.jpg, alt: 미술관 앞 조형물 }
+      - { src: /photos/almaty-2026/day07/20260917_131150.jpg, alt: 미술관 건물 }
+      - { src: /photos/almaty-2026/day07/20260917_135304.jpg, alt: 미술관 아트리움 }
+      - { src: /photos/almaty-2026/day07/20260917_143439.jpg, alt: The Clock 전시 }
+      - { src: /photos/almaty-2026/day07/20260917_135507.jpg, alt: 전시실 }
+      - { src: /photos/almaty-2026/day07/20260917_145207.jpg, alt: 야외 조각 }
   - id: departure
     name: 귀국
     nameEn: Departure
@@ -64,7 +65,7 @@ stops:
     camera: { zoom: 11, pitch: 30, bearing: 0 }
     note: 밤 비행기에 오른다.
     photos:
-      - { src: /photos/day07/20260917_221843.jpg, alt: 출발 전 기내 화면 }
+      - { src: /photos/almaty-2026/day07/20260917_221843.jpg, alt: 출발 전 기내 화면 }
   - id: icn-return
     name: 인천 도착
     nameEn: Back in Incheon

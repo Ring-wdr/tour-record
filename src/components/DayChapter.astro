@@ -1,14 +1,14 @@
 ---
 import { render } from 'astro:content';
 import Photo from './Photo.astro';
-import { DAY_TONES, formatDate, pad2, type Day } from '../lib/trip';
+import { formatDate, pad2, type Day } from '../lib/trip';
 
 interface Props {
   day: Day;
 }
 const { day } = Astro.props;
 const d = day.data;
-const tone = DAY_TONES[d.day];
+const tone = d.tone;
 const { md, weekday } = formatDate(d.date);
 const { Content } = await render(day);
 
@@ -32,7 +32,7 @@ const peak = Math.max(...d.stops.map((s) => s.elevation ?? 0));
   {/* 1) 타이틀 카드 — 불투명, 지도는 이 날의 전체 경로로 이동 */}
   <header class="title-card" data-map-target="day" data-day={d.day}>
     <div class="title-media">
-      {d.cover && <Photo photo={d.cover} day={d.day} class="title-img" static />}
+      {d.cover && <Photo photo={d.cover} tone={tone} class="title-img" static />}
     </div>
     <div class="title-inner reveal">
       <p class="eyebrow">Day {pad2(d.day)} · {md} {weekday}</p>
@@ -83,7 +83,7 @@ const peak = Math.max(...d.stops.map((s) => s.elevation ?? 0));
             {s.photos.length > 0 && (
               <div class:list={['thumbs', 'pswp-gallery', `n${Math.min(s.photos.length, 3)}`]}>
                 {s.photos.slice(0, 3).map((p) => (
-                  <Photo photo={p} day={d.day} class="thumb" />
+                  <Photo photo={p} tone={tone} class="thumb" />
                 ))}
               </div>
             )}
@@ -113,7 +113,7 @@ const peak = Math.max(...d.stops.map((s) => s.elevation ?? 0));
       allPhotos.length > 0 && (
         <div class="mosaic pswp-gallery">
           {allPhotos.map((p, i) => (
-            <Photo photo={p} day={d.day} class={`tile t${i % 5}`} />
+            <Photo photo={p} tone={tone} class={`tile t${i % 5}`} />
           ))}
         </div>
       )

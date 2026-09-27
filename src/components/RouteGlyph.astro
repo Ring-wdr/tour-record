@@ -1,0 +1,64 @@
+---
+// 여행 전체 경로를 날짜 색 선으로 그린 작은 그림 (목록 카드용 — 지도 없이 SVG만)
+import { dayRoute, type Trip } from '../lib/trip';
+
+interface Props {
+  trip: Trip;
+  class?: string;
+}
+const { trip, class: className } = Astro.props;
+const { days, data: t } = trip;
+
+// 비행 구간은 빼고 현지 이동만 — 인천 같은 먼 점이 들어가면 나머지가 한 점으로 뭉친다
+const lines = days
+  .map((d, i) => ({
+    accent: d.data.tone.accent,
+    pts: dayRoute(d, days[i - 1], t.base, trip.tracks[d.data.day]).filter((_, k, all) => {
+      const stop = d.data.stops.find((s) => s.coords[0] === all[k][0] && s.coords[1] === all[k][1]);
+      return stop?.kind !== 'flight';
+    }),
+  }))
+  .filter((l) => l.pts.length > 1);
+
+const all = lines.flatMap((l) => l.pts);
+const kx = Math.cos((t.base[1] * Math.PI) / 180); // 경도 1도의 가로 길이 보정
+const xs = all.map((p) => p[0] * kx);
+const ys = all.map((p) => -p[1]);
+const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+const S = 100;
+const PAD = 6;
+const scale = (S - PAD * 2) / Math.max(maxX - minX, maxY - minY, 1e-6);
+const ox = PAD + (S - PAD * 2 - (maxX - minX) * scale) / 2;
+const oy = PAD + (S - PAD * 2 - (maxY - minY) * scale) / 2;
+const path = (pts: [number, number][]) =>
+  pts.map((p, i) => `${i ? 'L' : 'M'}${(ox + (p[0] * kx - minX) * scale).toFixed(2)},${(oy + (-p[1] - minY) * scale).toFixed(2)}`).join('');
+---
+
+{
+  lines.length > 0 && (
+    <svg class:list={['glyph', className]} viewBox={`0 0 ${S} ${S}`} aria-hidden="true">
+      {lines.map((l, i) => (
+        <path d={path(l.pts)} stroke={l.accent} style={`--d:${i * 0.25}s`} pathLength="1" />
+      ))}
+    </svg>
+  )
+}
+
+<style>
+  .glyph {
+    overflow: visible;
+  }
+  path {
+    fill: none;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  :global(.is-in) .glyph path {
+    transition: stroke-dashoffset 2s var(--d) var(--ease-out);
+    stroke-dashoffset: 0;
+  }
+</style>

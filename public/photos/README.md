@@ -1,6 +1,6 @@
 # 사진 넣는 곳 (로컬 개발용)
 
-`src/content/days/dayXX.md`에 적힌 경로 그대로 파일을 넣으면 자동으로 플레이스홀더가 실제 사진으로 바뀐다.
+`src/content/trips/<slug>/days/dayXX.md`에 적힌 경로 그대로 파일을 넣으면 자동으로 플레이스홀더가 실제 사진으로 바뀐다.
 예: `/photos/day02/lake-01.jpg` → `public/photos/day02/lake-01.jpg`
 
 - 파일이 없으면 그라디언트 플레이스홀더가 보이고, 개발 서버에서는 기대하는 경로가 표시된다.

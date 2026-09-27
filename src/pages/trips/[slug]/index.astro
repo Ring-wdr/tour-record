@@ -41,6 +41,8 @@ const mapData = {
   description={t.description}
   image={heroDay.data.cover && { src: ogImage(trip.slug), alt: heroDay.data.cover.alt }}
 >
+  <!-- 목록의 표지가 첫 화면 사진으로 커지도록, 사진이 파싱된 뒤 첫 렌더 (Base.astro 전환 스크립트) -->
+  <link slot="head" rel="expect" href="#trip-hero" blocking="render" />
   <Hero trip={trip} cover={heroDay} />
   <Stats stats={stats} />
   <DayRail days={days} />

@@ -17,7 +17,7 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 ---
 
 <article class:list={['entry', 'reveal', { flip: index % 2 === 1 }]} style={`--accent:${hero.data.tone.accent}`}>
-  <a class="cover" href={href} tabindex="-1" aria-hidden="true">
+  <a class="cover" href={href} tabindex="-1" aria-hidden="true" data-vt-cover={trip.slug}>
     {hero.data.cover && <Photo photo={hero.data.cover} tone={hero.data.tone} class="cover-img" static />}
     <RouteGlyph trip={trip} class="cover-glyph" />
   </a>

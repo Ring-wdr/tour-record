@@ -1,0 +1,19 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/yeongwol-taebaek-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: YEONGWOL
+subtitle: Three Days in Yeongwol & Taebaek
+subtitleKo: 영월과 태백에서 보낸 3일
+description: 단종의 유배지를 따라 걷고, 해발 800미터 위에서 별을 봤다. 강원 영월·태백 여행 기록 (2026.08.05 – 2026.08.07).
+country: Korea
+start: 2026-08-05
+end: 2026-08-07
+# 숙소 대신 공개하는 좌표 — 영월 시내(버스터미널 부근). 실제 숙소(영월·태백)는 trips.local.json zones에만
+base: [128.4658, 37.1834]
+heroDay: 1
+utcOffset: "+09:00"
+tracks:
+  bbox: [[128.2, 37.0], [129.1, 37.35]] # 영월·정선·태백 밖(서울·버스 안)은 버림
+altitudeNote: 동강 물가에서 봉래산 꼭대기 천문대, 그리고 해발 700미터의 탄광 도시까지. 사흘 내내 조금씩 높아졌다.

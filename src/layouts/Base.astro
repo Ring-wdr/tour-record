@@ -44,6 +44,56 @@ const { title, description, image } = Astro.props;
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
+    <slot name="head" />
+    <script is:inline>
+      // 목록 ↔ 여행 페이지 전환 (문서 간 View Transition, global.css의 @view-transition)
+      // 누른 여행의 표지와 여행 페이지 첫 화면에만 같은 이름을 붙여, 표지가 화면 전체로 커지게 한다.
+      // pagereveal은 첫 렌더 전에 오므로 head의 일반 스크립트에서 등록해야 하고, 그때 이름 붙일 요소가 파싱돼 있도록
+      // 각 페이지가 head 슬롯에 <link rel="expect" blocking="render">를 넣는다.
+      (() => {
+        const NAME = 'trip-cover';
+        const tripSlug = (url) => {
+          try { return new URL(url, location.href).pathname.match(/^\/trips\/([^/]+)\/?$/)?.[1]; } catch { return undefined; }
+        };
+        const isHome = (url) => { try { return new URL(url, location.href).pathname === '/'; } catch { return false; } };
+        const cover = (slug) => slug && document.querySelector(`[data-vt-cover="${CSS.escape(slug)}"] .cover-img`);
+        const hero = () => document.querySelector('[data-vt-hero]');
+        const tag = (el, vt) => {
+          if (!el) return;
+          el.style.viewTransitionName = NAME;
+          vt.finished.finally(() => (el.style.viewTransitionName = ''));
+        };
+        const inView = (el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
+
+        // Navigation API가 없는 브라우저(Safari)는 목적지를 모르므로 마지막으로 누른 여행 링크를 기억해 둔다
+        let clicked;
+        addEventListener('click', (e) => {
+          const a = e.target instanceof Element && e.target.closest('a[href]');
+          if (a) clicked = a.href;
+        }, true);
+
+        addEventListener('pageswap', (e) => {
+          if (!e.viewTransition) return;
+          const to = e.activation?.entry?.url ?? clicked;
+          if (isHome(location.href)) tag(cover(tripSlug(to)), e.viewTransition);
+          else if (tripSlug(location.href) && isHome(to)) {
+            const h = hero();
+            if (h && inView(h)) tag(h, e.viewTransition);
+          }
+        });
+
+        addEventListener('pagereveal', (e) => {
+          if (!e.viewTransition) return;
+          const from = window.navigation?.activation?.from?.url ?? document.referrer;
+          if (isHome(location.href)) tag(cover(tripSlug(from)), e.viewTransition);
+          else if (tripSlug(location.href) && isHome(from)) {
+            // 표지에서 커져 들어온 경우 — 첫 화면의 켄번스·레터박스 연출을 끝난 상태로 둔다 (Hero.astro)
+            document.documentElement.classList.add('vt-from-list');
+            tag(hero(), e.viewTransition);
+          }
+        });
+      })();
+    </script>
   </head>
   <body>
     <slot />

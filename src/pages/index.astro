@@ -25,6 +25,8 @@ const span = years.length ? `${Math.min(...years)}${Math.max(...years) > Math.mi
   description={`${SITE.titleKo} — ${trips.map((t) => t.data.title).join(' · ')}`}
   image={latest && latestCover && { src: ogImage(latest.slug), alt: latestCover.alt }}
 >
+  <!-- 여행 페이지에서 돌아올 때 표지로 줄어들도록, 목록까지 파싱된 뒤 첫 렌더 (Base.astro 전환 스크립트) -->
+  <link slot="head" rel="expect" href="#journeys" blocking="render" />
   <header class="mast">
     <div class="bar bar-top" aria-hidden="true"></div>
     <div class="bar bar-bottom" aria-hidden="true"></div>

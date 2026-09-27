@@ -12,7 +12,7 @@ const t = trip.data;
 ---
 
 <header class="hero">
-  <div class="hero-media">
+  <div class="hero-media" id="trip-hero" data-vt-hero>
     {cover.data.cover && <Photo photo={cover.data.cover} tone={cover.data.tone} class="hero-img" static eager />}
   </div>
   <div class="bar bar-top" aria-hidden="true"></div>
@@ -84,6 +84,17 @@ const t = trip.data;
   @keyframes letterbox {
     to { height: 9vh; }
   }
+
+  /* 목록의 표지에서 커져 들어온 경우 (Base.astro) — 사진은 이미 밝게 떠 있고, 레터박스는 열린 채로 서서히 나타난다 */
+  :global(.vt-from-list) .hero-media {
+    animation: none;
+  }
+  :global(.vt-from-list) .bar {
+    animation: none;
+    height: 9vh;
+  }
+  :global(.vt-from-list) .bar-top { view-transition-name: hero-bar-top; }
+  :global(.vt-from-list) .bar-bottom { view-transition-name: hero-bar-bottom; }
 
   .hero-title {
     position: relative;

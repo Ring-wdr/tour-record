@@ -4,6 +4,7 @@
 // "여행 만들기"를 누르면 검증 → 한 장씩 서버로 보내 변환 → R2 업로드 → md 쓰기 순서로 처리한다.
 import { Map as MapLibre, Marker, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import exifr from 'exifr';
 
 setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 
@@ -12,7 +13,21 @@ setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 /* ------------------------------------------------------------------ */
 
 /** 사진 한 장 — 파일 자체는 files(Map)에 id로, 초안(localStorage)에는 이 메타데이터만 */
-type PhotoEntry = { id: string; fileName: string; alt: string; caption: string };
+type PhotoEntry = { id: string; fileName: string; alt: string; caption: string; exif?: PhotoExif };
+/**
+ * 사진에서 읽은 촬영 정보 (브라우저에서 읽고 초안에 저장 — 파일 자체와 달리 새로고침해도 남는다).
+ * 공개되는 사진 파일에서는 서버 변환 때 EXIF가 모두 지워진다
+ */
+type PhotoExif = {
+  /** 촬영 시각 UTC(ms) — EXIF 시각 + OffsetTimeOriginal. 오프셋이 없으면 여행지 현지 시각으로 본다 */
+  utc?: number;
+  /** EXIF에 시간대(OffsetTimeOriginal)가 있었는지 */
+  hasOffset?: boolean;
+  lng?: number;
+  lat?: number;
+  /** GPS 고도(m) */
+  alt?: number;
+};
 type Stop = {
   id: string; name: string; nameEn: string; lng: string; lat: string; approx: boolean; time: string;
   elevation: string; kind: string; zoom: string; pitch: string; bearing: string; note: string;
@@ -116,6 +131,111 @@ function forget(entry: PhotoEntry | null) {
   thumbs.delete(entry.id);
 }
 const isImage = (f: File) => ACCEPT.split(',').includes(f.type);
+
+/* ------------------------------------------------------------------ */
+/* 사진 EXIF → 장소 좌표·시각·고도                                        */
+/* ------------------------------------------------------------------ */
+
+/** "+05:00" → 300 (분). 형식이 틀리면 null */
+const offsetMin = (o: string | undefined) => {
+  const m = o?.match(/^([+-])(\d{2}):(\d{2})$/);
+  return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +m[3]) : null;
+};
+
+async function readExif(file: File): Promise<PhotoExif | undefined> {
+  try {
+    const e = await exifr.parse(file, {
+      gps: true,
+      reviveValues: false,
+      pick: ['DateTimeOriginal', 'OffsetTimeOriginal', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'GPSAltitude', 'GPSAltitudeRef'],
+    });
+    if (!e) return undefined;
+    const out: PhotoExif = {};
+    // "2026:09:12 01:12:35" — 휴대폰 시계 기준. 착륙 직전 사진처럼 한국 시간이 남은 경우가 있어 오프셋을 반영한다
+    const m = String(e.DateTimeOriginal ?? '').match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+    if (m) {
+      const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+      const off = offsetMin(e.OffsetTimeOriginal);
+      out.hasOffset = off != null;
+      out.utc = wall - (off ?? tripOffset() ?? 0) * 60_000;
+    }
+    if (typeof e.latitude === 'number' && typeof e.longitude === 'number') {
+      out.lat = +e.latitude.toFixed(5);
+      out.lng = +e.longitude.toFixed(5);
+    }
+    if (typeof e.GPSAltitude === 'number') out.alt = Math.round(e.GPSAltitudeRef === 1 ? -e.GPSAltitude : e.GPSAltitude);
+    return out;
+  } catch {
+    return undefined;
+  }
+}
+
+const tripOffset = () => offsetMin(state.utcOffset.trim());
+
+/** 촬영 시각을 여행지 현지 시각으로: { date: "2026-09-12", hm: "09:40" } */
+function localTime(x: PhotoExif) {
+  if (x.utc == null) return null;
+  const t = new Date(x.utc + (tripOffset() ?? 0) * 60_000).toISOString();
+  return { date: t.slice(0, 10), hm: t.slice(11, 16) };
+}
+/** 사진 날짜가 그 날(i일차)에서 며칠 떨어졌나 — 0이면 같은 날, 1이면 다음 날 새벽 등 */
+function dayOffset(x: PhotoExif, i: number) {
+  const lt = localTime(x);
+  if (!lt || !validDate(state.start)) return null;
+  return Math.round((Date.parse(lt.date) - (Date.parse(state.start) + i * DAY_MS)) / DAY_MS);
+}
+/** 그 날의 사진인가 — 같은 날, 또는 다음 날 06시 전(자정 넘긴 밤)은 "+1"로 받아 준다 */
+function fitsDay(x: PhotoExif, i: number): 0 | 1 | null {
+  const off = dayOffset(x, i);
+  if (off === 0) return 0;
+  if (off === 1 && localTime(x)!.hm < '06:00') return 1;
+  return null;
+}
+const median = (xs: number[]) => {
+  const a = [...xs].sort((p, q) => p - q);
+  return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+};
+
+/**
+ * 장소 사진들의 EXIF로 좌표(GPS 중앙값)·시각(가장 이른 사진)·고도(GPS 중앙값)를 채운다.
+ * overwrite=false면 빈 칸만. 채운 항목 이름을 돌려준다
+ */
+function fillFromPhotos(i: number, j: number, overwrite: boolean): string[] {
+  const s = state.days[i].stops[j];
+  // 다른 날 찍힌 사진(잘못 넣은 사진)은 빼고 계산한다. 촬영 시각이 없는 사진은 GPS만 쓴다
+  const xs = s.photos
+    .map((p) => p.exif)
+    .filter((x): x is PhotoExif => !!x && (x.utc == null || !validDate(state.start) || fitsDay(x, i) != null));
+  const done: string[] = [];
+  const gps = xs.filter((x) => x.lng != null && x.lat != null);
+  if (gps.length && (overwrite || (s.lng === '' && s.lat === ''))) {
+    s.lng = String(+median(gps.map((x) => x.lng!)).toFixed(4));
+    s.lat = String(+median(gps.map((x) => x.lat!)).toFixed(4));
+    s.approx = false;
+    done.push(`좌표(${gps.length}장 중앙값)`);
+  }
+  const timed = xs.filter((x) => x.utc != null && fitsDay(x, i) != null).sort((a, b) => a.utc! - b.utc!);
+  if (timed.length && (overwrite || s.time === '')) {
+    const first = timed[0];
+    s.time = `${fitsDay(first, i) === 1 ? '+1 ' : ''}${localTime(first)!.hm}`;
+    done.push('시각');
+  }
+  const alts = xs.filter((x) => x.alt != null).map((x) => x.alt!);
+  if (alts.length && (overwrite || s.elevation === '')) {
+    s.elevation = String(Math.round(median(alts)));
+    done.push('고도(GPS — 공식 고도가 있으면 그 값으로 고친다)');
+  }
+  return done;
+}
+
+/** 채운 결과 알림 — 장소별로 기억해 두고 다시 그려도 남게 (장소 순서를 바꾸면 사라진다) */
+const notes = new Map<string, string>();
+function notice(i: number, j: number, text: string) {
+  const p = `days.${i}.stops.${j}.photos`;
+  notes.set(p, text);
+  const el = document.querySelector(`[data-f="${p}"] .ed-exif-note`);
+  if (el) el.textContent = text;
+}
 let finished = false;
 // 고른 사진이 있으면 페이지를 떠날 때 경고 (파일은 초안에 저장되지 않는다)
 addEventListener('beforeunload', (e) => {
@@ -199,11 +319,25 @@ function photoCard(path: string, ph: PhotoEntry, tools: string) {
     <div class="ed-photo-thumb">${thumb}</div>
     <div class="ed-photo-meta">
       <small title="${esc(ph.fileName)}">${esc(ph.fileName)}</small>
+      ${exifBadge(path, ph)}
       <input data-k="${path}.alt" value="${esc(ph.alt)}" placeholder="설명 (비우면 기본값)">
       <input data-k="${path}.caption" value="${esc(ph.caption)}" placeholder="캡션 (선택)">
     </div>
     <div class="ed-photo-tools">${tools}</div>
   </div>`;
+}
+/** 촬영 시각·GPS 표시. 그 날짜와 다르면 경고 (다음 날 새벽은 +1로 허용) */
+function exifBadge(path: string, ph: PhotoEntry) {
+  const x = ph.exif;
+  if (!x) return `<span class="ed-exif none">촬영 정보 없음</span>`;
+  const i = +path.split('.')[1];
+  const lt = localTime(x);
+  const fit = fitsDay(x, i);
+  const wrong = lt != null && validDate(state.start) && fit == null;
+  const date = lt ? `${lt.date.slice(5).replace('-', '.')} ${lt.hm}` : '';
+  return `<span class="ed-exif${wrong ? ' wrong' : ''}" title="${wrong ? '이 날짜의 사진이 아니다 — 다른 날로 옮겨야 할 수 있다' : x.hasOffset === false ? '사진에 시간대가 없어 여행지 현지 시각으로 봤다' : ''}">${
+    date ? `🕒 ${date}${fit === 1 ? ' (+1)' : ''}` : ''
+  }${x.lng != null ? ' · 📍GPS' : ''}${wrong ? ' · 다른 날' : ''}</span>`;
 }
 const photoInput = (attr: string, multiple: boolean) =>
   `<input type="file" accept="${ACCEPT}"${multiple ? ' multiple' : ''} ${attr} hidden>`;
@@ -223,6 +357,11 @@ function photosField(i: number, j: number) {
   return `
   <div class="ed-field wide" data-f="${p}">
     <span>사진 <em class="inline">${list.length}장 · 장소 카드에는 앞의 3장 · 설명을 비우면 장소 이름</em></span>
+    ${
+      list.some((ph) => ph.exif && (ph.exif.lng != null || ph.exif.utc != null))
+        ? `<div class="ed-exif-bar"><button type="button" class="btn" data-act="fill-exif" data-i="${i}" data-j="${j}">📍 사진에서 좌표·시각·고도 다시 채우기</button><span class="ed-exif-note">${esc(notes.get(p) ?? '')}</span></div>`
+        : `<div class="ed-exif-bar"><span class="ed-exif-note">${esc(notes.get(p) ?? '')}</span></div>`
+    }
     <div class="ed-photos" data-drop="${p}">
       ${cards.join('')}
       <label class="ed-photo-add">${photoInput(`data-photo-add="${p}"`, true)}<b>+</b><span>사진 추가<br><small>여러 장 · 끌어다 놓기</small></span></label>
@@ -463,6 +602,7 @@ form.addEventListener('input', (e) => {
   el.closest('.has-issue')?.classList.remove('has-issue');
   saveDraft();
   if (/(Lng|Lat|\.lng|\.lat)$/.test(k)) syncMarkers();
+  else if (k === 'utcOffset' && tripOffset() != null) renderDays();
   else if (/\.nameEn$/.test(k)) {
     // id placeholder(자동 id 미리보기)를 영문 이름에 맞춰 갱신
     const [, i, j] = k.match(/^days\.(\d+)\.stops\.(\d+)\./)!.map(Number);
@@ -472,8 +612,8 @@ form.addEventListener('input', (e) => {
   else if (/\.accent$/.test(k)) (el.closest('.ed-day') as HTMLElement)?.style.setProperty('--accent', el.value);
 });
 
-/** 고른 파일을 사진 목록(…photos) 또는 표지(…cover)에 넣는다 */
-function addFiles(target: string, list: FileList | File[]) {
+/** 고른 파일을 사진 목록(…photos) 또는 표지(…cover)에 넣는다. 장소 사진은 EXIF를 읽어 빈 좌표·시각·고도를 채운다 */
+async function addFiles(target: string, list: FileList | File[]) {
   const picked = [...list].filter(isImage);
   const skipped = [...list].length - picked.length;
   if (skipped) alert(`${skipped}개는 JPEG·PNG·WebP가 아니라 뺐다 (HEIC는 휴대폰에서 JPEG로 바꿔 올린다)`);
@@ -482,11 +622,34 @@ function addFiles(target: string, list: FileList | File[]) {
     const day = state.days[+target.split('.')[1]];
     forget(day.cover);
     day.cover = newEntry(picked[0]);
-  } else {
-    (getAt(target) as PhotoEntry[]).push(...picked.map(newEntry));
+    readExif(picked[0]).then((x) => {
+      if (day.cover) day.cover.exif = x;
+      saveDraft();
+    });
+    saveDraft();
+    renderDays();
+    return;
   }
+  const entries = picked.map(newEntry);
+  (getAt(target) as PhotoEntry[]).push(...entries);
   saveDraft();
   renderDays();
+  // 미리보기를 먼저 보여 주고, EXIF는 뒤에서 읽는다
+  await Promise.all(entries.map(async (ph) => (ph.exif = await readExif(files.get(ph.id)!))));
+  const [, i, , j] = target.split('.').map(Number);
+  const filled = fillFromPhotos(i, j, false);
+  saveDraft();
+  renderDays();
+  if (filled.length) {
+    notice(i, j, `사진에서 채움: ${filled.join(', ')}`);
+    focusStop(i, j);
+  }
+}
+
+/** 채운 좌표로 지도 이동 */
+function focusStop(i: number, j: number) {
+  const s = state.days[i].stops[j];
+  if (s.lng !== '' && s.lat !== '') map.flyTo({ center: [+s.lng, +s.lat], zoom: 12, essential: true });
 }
 
 form.addEventListener('change', (e) => {
@@ -496,8 +659,16 @@ form.addEventListener('change', (e) => {
   if (photoAdd) addFiles(photoAdd, input.files!);
   else if (coverAdd) addFiles(`days.${coverAdd}.cover`, input.files!);
   else if (photoReattach && input.files?.[0] && isImage(input.files[0])) {
-    files.set(photoReattach, input.files[0]);
+    const file = input.files[0];
+    files.set(photoReattach, file);
     renderDays();
+    readExif(file).then((x) => {
+      const all = state.days.flatMap((d) => [d.cover, ...d.stops.flatMap((st) => st.photos)]);
+      const ph = all.find((p) => p?.id === photoReattach);
+      if (ph && !ph.exif) ph.exif = x;
+      saveDraft();
+      renderDays();
+    });
   }
 });
 
@@ -564,13 +735,23 @@ document.addEventListener('click', (e) => {
       break;
     case 'stop-del':
       stops.splice(+j!, 1);
+      notes.clear(); // 알림은 장소 위치로 기억하므로, 장소가 빠지거나 옮겨지면 지운다
       break;
     case 'stop-up':
     case 'stop-down': {
+      notes.clear();
       const a = +j!;
       const b = act === 'stop-up' ? a - 1 : a + 1;
       [stops[a], stops[b]] = [stops[b], stops[a]];
       break;
+    }
+    case 'fill-exif': {
+      const filled = fillFromPhotos(+i!, +j!, true);
+      saveDraft();
+      renderDays();
+      notice(+i!, +j!, filled.length ? `사진에서 다시 채움: ${filled.join(', ')}` : '사진에 쓸 만한 촬영 정보가 없다');
+      focusStop(+i!, +j!);
+      return;
     }
     case 'photo-move': {
       const list = getAt(btn.dataset.path!) as PhotoEntry[];

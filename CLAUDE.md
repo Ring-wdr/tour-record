@@ -27,7 +27,7 @@
 - `src/scripts/story.ts` — IntersectionObserver로 스텝 진입 시 지도 `flyTo`/`fitBounds`, 경로 그리기 애니메이션, 레일/진행바
 - `src/pages/index.astro` — 여행 목록 (`TripEntry` + `RouteGlyph`: 경로를 날짜 색 선으로 그린 SVG)
 - `integrations/admin/` — 관리자 통합: `index.ts`(dev 전용 라우트·미들웨어·빌드 검사), `api.ts`(검증 `POST /trips?dryRun=1` → 사진 한 장씩 `PUT /photos/<slug>/dayXX/<이름>`(변환) → `POST /trips`(photos.json·og.jpg → R2 업로드 → 성공하면 trip.yaml·dayXX.md 쓰기), 로컬 설정은 trips.local.json), `serialize.ts`(기존 파일과 같은 YAML 모양)
-- `src/admin/` — 관리자 페이지(`pages/`)와 폼(`editor.ts`: 상태 객체 → 폼, 입력칸 `data-k` = 상태 경로, 초안은 localStorage, 지도 클릭으로 좌표 입력). 사진은 고른 `File`을 메모리 Map에 그대로 두고 초안에는 설명만 저장 → 새로고침하면 "파일 다시 선택"
+- `src/admin/` — 관리자 페이지(`pages/`)와 폼(`editor.ts`: 상태 객체 → 폼, 입력칸 `data-k` = 상태 경로, 초안은 localStorage, 지도 클릭으로 좌표 입력). 사진은 고른 `File`을 메모리 Map에 그대로 두고 초안에는 설명과 EXIF 요약(촬영 UTC 시각·GPS·고도)만 저장 → 새로고침하면 "파일 다시 선택". 장소에 사진을 넣으면 브라우저에서 EXIF(`exifr`)를 읽어 **빈** 좌표(GPS 중앙값)·시각(가장 이른 사진, `OffsetTimeOriginal` 반영, 다음 날 06시 전은 `+1`)·고도(GPS 중앙값)를 채운다. 그 날짜가 아닌 사진은 "다른 날"로 표시하고 계산에서 뺀다
 - `scripts/lib/photo.mjs`(변환: 2400px JPEG + 1200px WebP, EXIF 제거) · `scripts/lib/r2.mjs`(R2 업로드) — CLI(`pnpm photos`, `photos:upload`)와 관리자가 같이 쓴다
 - `scripts/copy-maplibre-worker.mjs` — MapLibre 6 워커를 `public/vendor/`로 복사 (predev/prebuild에서 자동 실행)
 
@@ -79,7 +79,8 @@
 4. ~~메인 목록 페이지 (`src/pages/index.astro` + `TripEntry`·`RouteGlyph`: 여행별 표지·통계·경로 선 그림)~~
 5. ~~관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장~~
 6. ~~관리자: 사진 파일 업로드 → 변환 → R2~~
-7. 관리자: 사진 EXIF 시각·GPS로 장소 좌표·시각 자동 채우기(업로드 전에 브라우저에서 읽기), 기존 여행 수정, "발행" 버튼(deploy)
+7. ~~관리자: 사진 EXIF 시각·GPS로 장소 좌표·시각·고도 자동 채우기~~
+8. 관리자: 기존 여행 수정, "발행" 버튼(deploy), 사진 GPS로 이동 경로(tracks.json)까지 만들기
 
 ## 로드맵 — 알마티
 1. ~~스키마 + 더미 데이터 + 스크롤 지도 초안~~

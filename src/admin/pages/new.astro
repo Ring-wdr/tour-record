@@ -322,6 +322,34 @@ import AdminLayout from '../AdminLayout.astro';
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .ed-exif {
+    font: 11px var(--mono);
+    color: #9cc3a0;
+  }
+  .ed-exif.none {
+    color: #6f6a62;
+  }
+  .ed-exif.wrong {
+    color: #ff8a70;
+  }
+  .ed-exif-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+  }
+  .ed-exif-bar:empty,
+  .ed-exif-bar:has(> .ed-exif-note:only-child:empty) {
+    display: none;
+  }
+  .ed-exif-bar .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .ed-exif-note {
+    font-size: 12px;
+    color: var(--accent);
+  }
   .editor .ed-photo-meta input {
     height: 32px;
     font-size: 12px;

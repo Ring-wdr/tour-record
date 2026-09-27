@@ -62,6 +62,7 @@ pnpm dev          # http://localhost:4321
 사진·경로 명령은 모든 여행을 처리하고, `-- --trip <slug>`를 붙이면 그 여행만 처리한다. 원본 사진 폴더와 숙소 프라이버시 구역은 git에서 제외된 `trips.local.json`에 여행별로 적는다.
 | `pnpm cf:preview` | 빌드 후 Cloudflare 런타임으로 로컬 확인 |
 | `pnpm cf:deploy` | 빌드 후 Cloudflare에 배포 |
+| `pnpm check` | 타입 검사 (astro check) |
 | `pnpm cf:deploy:legacy` | 옛 주소(almaty-2026.…workers.dev)의 301 리다이렉트 Worker 배포 |
 
 `pnpm deploy`는 pnpm 내장 명령과 겹치므로 `cf:deploy`를 쓴다.
@@ -74,6 +75,12 @@ pnpm photos          # 2. 변환
 pnpm photos:upload   # 3. R2 업로드
 pnpm cf:deploy       # 4. 배포
 ```
+
+## 관리자 화면 (로컬 전용)
+
+`pnpm dev` 후 http://localhost:4321/admin — 여행 목록과 **새 여행 만들기** 폼. 섹션은 여행 페이지와 같은 순서(여행 정보 → 날짜별 타이틀 카드·경로 개요·장소·일기 → 고도 그래프)이고, 저장하면 사이트와 같은 스키마로 검증한 뒤 `src/content/trips/<slug>/`에 파일을 쓴다. 좌표는 옆의 지도를 클릭해 넣을 수 있다.
+
+관리자 화면은 개발 서버에만 있다. 운영 빌드에는 라우트도 API도 들어가지 않으며, 들어가면 빌드가 실패한다.
 
 ## 개인정보
 

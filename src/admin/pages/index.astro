@@ -1,0 +1,119 @@
+---
+// 관리자: 여행 목록 (dev 전용)
+import AdminLayout from '../AdminLayout.astro';
+import { getTrips, tripStats, ymd } from '../../lib/trip';
+
+const trips = await getTrips();
+---
+
+<AdminLayout title="여행 목록">
+  <main class="list">
+    <div class="head">
+      <h1>여행 목록</h1>
+      <a class="btn primary" href="/admin/new">+ 새 여행</a>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>slug</th><th>제목</th><th>나라</th><th>기간</th><th>일</th><th>장소</th><th>사진</th><th></th></tr>
+      </thead>
+      <tbody>
+        {
+          trips.map((t) => {
+            const s = tripStats(t.days);
+            return (
+              <tr>
+                <td class="mono">{t.slug}</td>
+                <td>{t.data.title}</td>
+                <td>{t.data.country}</td>
+                <td class="mono">{ymd(t.data.start)} — {ymd(t.data.end)}</td>
+                <td class="num">{s.days}</td>
+                <td class="num">{s.places}</td>
+                <td class="num">{s.photos}</td>
+                <td><a href={`/trips/${t.slug}/`} target="_blank">보기 ↗</a></td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+
+    <section class="howto">
+      <h2>새 여행을 사이트에 올리는 순서</h2>
+      <ol>
+        <li><a href="/admin/new">새 여행</a>에서 작성 → <code>src/content/trips/&lt;slug&gt;/</code>에 파일이 생긴다</li>
+        <li><code>pnpm photos -- --trip &lt;slug&gt;</code> — md에 적은 사진을 원본 폴더에서 변환</li>
+        <li><code>pnpm tracks -- --trip &lt;slug&gt;</code> — 사진 GPS로 이동 경로 생성 (선택)</li>
+        <li><code>pnpm photos:upload -- --trip &lt;slug&gt;</code> — R2 업로드</li>
+        <li>커밋 → <code>pnpm cf:deploy</code></li>
+      </ol>
+      <p>기존 여행을 고칠 때는 여행 폴더의 파일을 직접 수정한다.</p>
+    </section>
+  </main>
+</AdminLayout>
+
+<style>
+  .list {
+    padding: 40px var(--gutter) 80px;
+    max-width: 1200px;
+  }
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th {
+    text-align: left;
+    font: 500 11px var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--film-dim);
+    padding: 8px 10px;
+    border-bottom: 1px solid #333;
+  }
+  td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #1f1f23;
+  }
+  .mono {
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  td a {
+    color: var(--accent);
+  }
+  .howto {
+    margin-top: 56px;
+    padding: 24px;
+    border: 1px solid #222;
+    background: var(--ink-2);
+    font-size: 14px;
+  }
+  .howto h2 {
+    font: 600 16px var(--sans);
+    margin: 0 0 12px;
+  }
+  .howto li {
+    margin: 6px 0;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: #000;
+    padding: 1px 6px;
+  }
+  .howto p {
+    color: var(--film-dim);
+    margin: 16px 0 0;
+  }
+</style>

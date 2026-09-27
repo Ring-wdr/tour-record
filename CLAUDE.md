@@ -9,23 +9,30 @@
 - MapLibre GL 6 + OpenFreeMap `dark` 스타일 (키 없음) + AWS terrarium DEM (3D 지형/음영)
 - PhotoSwipe 5 (라이트박스), sharp (빌드 시 사진 크기 측정)
 - 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`) + R2(`tour-record-photos`, 키 = URL 경로). `worker/index.ts`가 `/photos/*`만 R2에서 서빙하고 나머지는 정적 에셋. 사진은 `public/.assetsignore`로 정적 에셋에서 제외. `pnpm cf:preview`(로컬 확인) → `pnpm cf:deploy`. `pnpm deploy`는 pnpm 내장 명령과 겹치므로 쓰지 않는다
-- 패키지 매니저: pnpm
+- 관리자 화면 `/admin`(목록), `/admin/new`(새 여행 만들기): **`astro dev`에서만 존재.** `integrations/admin`이 dev일 때만 라우트를 주입하고 API는 Vite 미들웨어라 운영 빌드에 없다. 빌드 후 `dist/admin`·`dist/api`가 있으면 빌드 실패
+- 패키지 매니저: pnpm. 타입 검사: `pnpm check` (astro check — TypeScript 6 고정, 7은 아직 미지원)
 
 ## 구조
 - `src/content/trips/<slug>/` — **여행 1개 = 폴더 1개, 모든 콘텐츠의 원천.** 폴더 이름이 URL slug
   - `trip.yaml` — 제목·기간·나라·공개 숙소 좌표(`base`)·표지 날(`heroDay`)·스포트라이트 국경(`spotlight`)
   - `days/dayXX.md` — frontmatter = 날짜 색(`tone`)·장소(stops)·좌표·카메라·사진, 본문 = 그날의 일기
   - `photos.json`(`pnpm photos`), `tracks.json`(`pnpm tracks`) — 생성 파일, 커밋함
-- `src/schemas/trip.ts` — zod 스키마(`astro/zod`). content collection과 (추후) 관리자 폼이 같이 쓴다. 파일 하나로 확인되는 규칙은 여기
+- `src/schemas/trip.ts` — zod 스키마(`astro/zod`). content collection과 관리자 API가 같이 쓴다. 파일 하나로 확인되는 규칙은 여기
+- `src/schemas/check.ts` — `tripIssues`: 여러 파일에 걸친 규칙(dayXX = day, 날짜 연속, 장소 id 중복, 사진 경로 등). astro:content에 의존하지 않아 빌드와 관리자 API가 같이 쓴다
 - `src/content.config.ts` — `trips`(id = slug), `days`(id = `<slug>/dayXX`) 컬렉션
-- `src/lib/trip.ts` — `getTrips()`(여행 + 날짜 + 경로 + 국경), `checkTrip`(여러 파일에 걸친 규칙: dayXX = day, 날짜 연속, 장소 id 중복 등 → 어기면 빌드 실패), 통계, 사진 해석(`resolvePhoto`)
+- `src/lib/trip.ts` — `getTrips()`(여행 + 날짜 + 경로 + 국경), `checkTrip`(`tripIssues`를 어기면 빌드 실패), 통계, 사진 해석(`resolvePhoto`)
 - `src/lib/site.ts` — 사이트 전체 정보(제목, 작성자)
 - `src/data/geo/<나라>.json` — 스포트라이트용 국경 (여러 여행이 공유)
 - `src/components/DayChapter.astro` — 하루 = 타이틀 카드(불투명) → 장소 스텝(투명, 뒤에 고정 지도) → 일기 스프레드(종이)
 - `src/scripts/story.ts` — IntersectionObserver로 스텝 진입 시 지도 `flyTo`/`fitBounds`, 경로 그리기 애니메이션, 레일/진행바
+- `src/pages/index.astro` — 여행 목록 (`TripEntry` + `RouteGlyph`: 경로를 날짜 색 선으로 그린 SVG)
+- `integrations/admin/` — 관리자 통합: `index.ts`(dev 전용 라우트·미들웨어·빌드 검사), `api.ts`(`POST /api/admin/trips`: 같은 스키마+`tripIssues`로 검증 → trip.yaml·dayXX.md 쓰기, 로컬 설정은 trips.local.json), `serialize.ts`(기존 파일과 같은 YAML 모양)
+- `src/admin/` — 관리자 페이지(`pages/`)와 폼(`editor.ts`: 상태 객체 → 폼, 입력칸 `data-k` = 상태 경로, 초안은 localStorage, 지도 클릭으로 좌표 입력)
 - `scripts/copy-maplibre-worker.mjs` — MapLibre 6 워커를 `public/vendor/`로 복사 (predev/prebuild에서 자동 실행)
 
 ## 규칙
+- 관리자 화면은 **새 여행 만들기만** 한다. 기존 여행 수정은 여행 폴더의 파일을 직접 고친다
+- `astro.config.mjs`나 `integrations/`를 고쳐 dev 서버가 스스로 재시작하면, 그 뒤로 콘텐츠 변경(새 여행 폴더·md 수정)을 감지하지 못한다(Astro 7.3 dev 서버 동작). 이럴 땐 dev 서버를 껐다 켠다
 - 좌표는 `[경도, 위도]`. 확인되지 않은 좌표는 `approx: true` (개발 서버에서 "좌표 대략치" 배지로 보임)
 - 컴포넌트는 전역 상수 대신 `trip`/`day`를 prop으로 받는다. 특정 여행에만 맞는 문구·값을 컴포넌트에 하드코딩하지 않는다 (→ trip.yaml / dayXX.md)
 - 알마티 7일차 개요는 `spotlightCountry`로 카자흐스탄 국경(`src/data/geo/kazakhstan.json`, Natural Earth 1:50m) 밖을 어둡게 가린다
@@ -67,7 +74,8 @@
 2. ~~파이프라인 스크립트 `--trip <slug>`, 사진 URL·R2 키에 slug 접두사(`/photos/<slug>/dayXX/...`), 여행별 OG 이미지~~
 3. ~~Cloudflare 이전: Worker `tour-record`, R2 `tour-record-photos`, 옛 주소는 301 리다이렉트 Worker~~
 4. ~~메인 목록 페이지 (`src/pages/index.astro` + `TripEntry`·`RouteGlyph`: 여행별 표지·통계·경로 선 그림)~~
-5. 관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장
+5. ~~관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장~~
+6. 관리자: 원본 사진 폴더에서 시간대별 썸네일로 사진 고르기(EXIF 시각·GPS로 장소 좌표 자동), 기존 여행 수정, "발행" 버튼(photos → upload → deploy)
 
 ## 로드맵 — 알마티
 1. ~~스키마 + 더미 데이터 + 스크롤 지도 초안~~

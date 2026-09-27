@@ -1,0 +1,347 @@
+---
+// 관리자: 새 여행 만들기 (dev 전용). 섹션 구성은 여행 페이지와 같다:
+//   여행 정보(첫 화면·통계·엔딩) → 날짜마다 [타이틀 카드 → 경로 개요 → 장소 스텝 → 일기] → 고도 그래프
+// 폼은 src/admin/editor.ts가 그린다. 저장하면 /api/admin/trips가 스키마 검증 후 md 파일을 쓴다.
+import AdminLayout from '../AdminLayout.astro';
+---
+
+<AdminLayout title="새 여행">
+  <div class="editor-wrap">
+    <main class="editor-main">
+      <div class="editor-head">
+        <div>
+          <p class="eyebrow">New journey</p>
+          <h1>새 여행</h1>
+          <p class="hint">
+            입력은 이 브라우저에 자동 저장된다(초안). 저장하면 <code>src/content/trips/&lt;slug&gt;/</code>에
+            <code>trip.yaml</code>과 <code>days/dayXX.md</code>가 생긴다.
+          </p>
+        </div>
+        <button type="button" class="btn" data-act="clear-draft">초안 지우기</button>
+      </div>
+      <div id="issues" class="issues" hidden></div>
+      <form id="editor" class="editor" novalidate></form>
+      <div id="done" class="done" hidden></div>
+    </main>
+
+    <aside class="editor-map">
+      <div id="pick-banner" class="pick-banner" hidden></div>
+      <div id="admin-map"></div>
+      <p class="map-note">좌표 옆 ◎ 버튼을 누른 뒤 지도를 클릭하면 [경도, 위도]가 채워진다.</p>
+    </aside>
+  </div>
+</AdminLayout>
+
+<script>
+  import '../editor';
+</script>
+
+<style is:global>
+  .editor-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 38vw);
+    align-items: start;
+  }
+  .editor-main {
+    padding: 32px var(--gutter) 120px;
+    min-width: 0;
+  }
+  .editor-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .editor-head .hint {
+    color: var(--film-dim);
+    font-size: 13px;
+    margin: 8px 0 0;
+  }
+  .admin code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: #000;
+    padding: 1px 6px;
+  }
+  .editor-map {
+    position: sticky;
+    top: 49px;
+    height: calc(100svh - 49px);
+    border-left: 1px solid #222;
+  }
+  #admin-map {
+    position: absolute;
+    inset: 0;
+  }
+  .map-note {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    margin: 0;
+    font-size: 12px;
+    color: #cfc9be;
+    text-shadow: 0 1px 4px #000;
+    pointer-events: none;
+  }
+  .pick-banner {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    padding: 10px 14px;
+    background: var(--accent);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .editor-map.picking #admin-map {
+    cursor: crosshair;
+  }
+  .editor-map .maplibregl-canvas-container.maplibregl-interactive {
+    cursor: inherit;
+  }
+  @media (max-width: 960px) {
+    .editor-wrap {
+      grid-template-columns: 1fr;
+    }
+    .editor-map {
+      order: -1;
+      position: sticky;
+      top: 49px;
+      z-index: 10;
+      height: 38svh;
+      border-left: 0;
+      border-bottom: 1px solid #222;
+    }
+    .map-note {
+      display: none;
+    }
+  }
+
+  /* ---------- form ---------- */
+  .editor fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .ed-block {
+    margin: 0 0 28px;
+    padding: 20px;
+    background: var(--ink-2);
+    border: 1px solid #222;
+  }
+  .ed-block > h2,
+  .ed-sub > h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 14px;
+    font: 700 17px var(--sans);
+  }
+  .ed-block > h2 small,
+  .ed-sub > h3 small {
+    font: 400 11px var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--film-dim);
+  }
+  .ed-sub {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #2c2c31;
+  }
+  .ed-sub > h3 {
+    font-size: 14px;
+  }
+  .ed-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px 14px;
+  }
+  .ed-grid .wide {
+    grid-column: 1 / -1;
+  }
+  .ed-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .ed-field > span {
+    font-size: 12px;
+    color: var(--film-dim);
+  }
+  .ed-field > span b {
+    color: var(--accent);
+    font-weight: 400;
+  }
+  .ed-field em {
+    font-style: normal;
+    font-size: 11px;
+    color: #6f6a62;
+  }
+  .editor input,
+  .editor select,
+  .editor textarea {
+    width: 100%;
+    padding: 7px 9px;
+    background: #0b0b0d;
+    border: 1px solid #333;
+    color: var(--film);
+    font: 14px var(--sans);
+  }
+  .editor textarea {
+    resize: vertical;
+    line-height: 1.6;
+  }
+  .editor textarea.mono,
+  .editor input.mono {
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .editor input:focus,
+  .editor select:focus,
+  .editor textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .editor input[type='color'] {
+    padding: 2px;
+    height: 34px;
+  }
+  .editor input[type='checkbox'] {
+    width: auto;
+  }
+  .ed-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .ed-coords {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 6px;
+  }
+  .ed-coords .btn {
+    padding: 6px 10px;
+  }
+  .has-issue input,
+  .has-issue select,
+  .has-issue textarea,
+  input.has-issue,
+  textarea.has-issue,
+  select.has-issue {
+    border-color: #ff6b4a !important;
+  }
+  .ed-issue {
+    font-size: 12px;
+    color: #ff8a70;
+  }
+
+  .ed-day {
+    margin: 0 0 36px;
+    border: 1px solid #2a2a2e;
+    border-top: 3px solid var(--accent);
+    background: #0f0f12;
+  }
+  .ed-day > header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #222;
+  }
+  .ed-day > header b {
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-size: 32px;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--accent);
+  }
+  .ed-day > header span {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--film-dim);
+  }
+  .ed-day > .ed-daybody {
+    padding: 4px 20px 20px;
+  }
+  .ed-stop {
+    margin: 12px 0;
+    padding: 14px;
+    border: 1px solid #2a2a2e;
+    border-left: 3px solid var(--accent);
+    background: var(--ink);
+  }
+  .ed-stop > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font: 500 12px var(--mono);
+    color: var(--film-dim);
+  }
+  .ed-stop > header div {
+    display: flex;
+    gap: 4px;
+  }
+  .ed-stop > header .btn {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+
+  .editor-actions {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    background: linear-gradient(transparent, var(--ink) 30%);
+  }
+  .editor-actions .status {
+    font-size: 13px;
+    color: var(--film-dim);
+  }
+
+  .issues {
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    border: 1px solid #ff6b4a;
+    background: rgb(255 107 74 / 0.08);
+    font-size: 13px;
+  }
+  .issues h2 {
+    font: 600 15px var(--sans);
+    margin: 0 0 8px;
+    color: #ff8a70;
+  }
+  .issues ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+  .issues a {
+    color: var(--film);
+  }
+  .done {
+    padding: 24px;
+    border: 1px solid var(--accent);
+    background: var(--ink-2);
+  }
+  .done h2 {
+    font: 700 20px var(--sans);
+    margin: 0 0 12px;
+  }
+  .done ol,
+  .done ul {
+    font-size: 14px;
+  }
+  .done li {
+    margin: 4px 0;
+  }
+</style>

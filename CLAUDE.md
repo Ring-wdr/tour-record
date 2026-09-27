@@ -33,7 +33,7 @@
 - 지도 카메라 이동에 `padding` 대신 `offset`을 쓴다 — flyTo의 padding은 지도에 남아 fitBounds와 겹치면 NaN 오류가 난다
 - 사진 파일이 없으면 날짜 색 그라디언트 플레이스홀더가 자동으로 렌더링된다
 - 공개 이미지에서는 EXIF GPS를 제거한다
-- **숙소 실제 좌표는 공개하지 않는다.** 실제 좌표는 git 제외 파일 `privacy.local.json`에만 두고, `pnpm tracks`가 그 반경 700m 안의 GPS 점을 잘라낸다. 사이트에 표시되는 숙소 좌표(trip.yaml `base`, day01 hotel)는 알마티 시내 중심
+- **숙소 실제 좌표는 공개하지 않는다.** 실제 좌표는 git 제외 파일 `trips.local.json`(여행별 `zones`)에만 두고, `pnpm tracks`가 그 반경 700m 안의 GPS 점을 잘라낸다. 사이트에 표시되는 숙소 좌표(trip.yaml `base`, day01 hotel)는 알마티 시내 중심
 - 디자인 토큰은 `src/styles/global.css`의 `:root`. 폰트: Fraunces(영문 디스플레이), Noto Serif KR(본문/제목), Pretendard(UI), JetBrains Mono(데이터), Nanum Pen Script(손글씨 메모)
 - `prefers-reduced-motion`을 존중한다
 
@@ -43,13 +43,15 @@
 - 동행자(초록색 옷)가 나온 사진은 쓰지 않는다. 본인은 푸른 체크셔츠, 침블락에서는 흰 점퍼
 - 장소 좌표·시각은 사진 EXIF GPS의 중앙값. 고도는 공식/문헌 값이 있는 곳은 그 값(빅 알마티 호수 2,511 · 메데우 1,691 · 탈가르 패스 3,200 · 콕토베 1,100 · 콜사이 1호 1,818 · 카인디 2,000), 없는 곳은 GPS 중앙값
 - 문구에 "톈산" 지명은 쓰지 않는다
-- 사진 선정은 dayXX.md의 `photos`/`cover`가 기준. 경로는 `/photos/dayXX/<원본파일명>.jpg`
-- `pnpm photos` → md에 적힌 사진만 원본에서 찾아 `public/photos/dayXX/`에 `<이름>.jpg`(2400px, 라이트박스) + `<이름>-md.webp`(1200px, 카드)로 변환, EXIF 전부 제거
+- `trips.local.json`(git 제외) = 여행별 로컬 설정: `{ "<slug>": { "source": 원본 사진 폴더, "zones": 프라이버시 구역 } }`. 파이프라인 스크립트는 `scripts/lib/trips.mjs`로 여행 폴더와 이 파일을 읽는다
+- 파이프라인 스크립트(`photos`, `tracks`, `photos:upload`)는 인자가 없으면 모든 여행, `-- --trip <slug>`면 그 여행만
+- 사진 선정은 dayXX.md의 `photos`/`cover`가 기준. 경로는 `/photos/<slug>/dayXX/<원본파일명>.jpg` (checkTrip이 확인). R2 키 = URL 경로에서 앞의 `/`만 뺀 것
+- `pnpm photos` → md에 적힌 사진만 원본에서 찾아 `public/photos/<slug>/dayXX/`에 `<이름>.jpg`(2400px, 라이트박스) + `<이름>-md.webp`(1200px, 카드)로 변환, EXIF 전부 제거
 - 변환된 사진은 git에 넣지 않는다 (`.gitignore`). 사진 크기는 여행 폴더의 `photos.json`(커밋됨)에 있어 사진 파일 없이도 빌드된다
 - 사진 추가/변경 순서: dayXX.md 수정 → `pnpm photos` → `pnpm photos:upload`(바뀐 파일만 R2에 업로드) → `pnpm cf:deploy`
 - 로컬에서 R2까지 확인: `pnpm photos:upload -- --local` → `pnpm cf:preview`
-- 링크 미리보기 `/photos/og.jpg`(1200×630)는 `pnpm photos`가 2일차 표지(첫 화면 호수 사진)로 만든다
-- `pnpm tracks` → 원본 사진 전체의 GPS를 실제 시각(EXIF 오프셋 반영) 순으로 이어 2~7일차 경로(`tracks.json`) 생성, 시속 180km 초과 점은 GPS 오류로 제외. 1일차는 장소를 잇는 비행 경로
+- 링크 미리보기 `/photos/<slug>/og.jpg`(1200×630)는 `pnpm photos`가 trip.yaml `heroDay`의 표지(첫 화면 사진)로 만든다. `/`는 가장 최근 여행의 것을 쓴다
+- `pnpm tracks` → 원본 사진 전체의 GPS를 실제 시각(EXIF 오프셋 반영) 순으로 이어 날짜별 경로(`tracks.json`) 생성, 시속 180km 초과 점은 GPS 오류로 제외. 날짜 구분은 trip.yaml `utcOffset`, `tracks.skipDays`(알마티 1일차 = 비행)는 장소를 잇는 선, `tracks.bbox` 밖 점은 버림
 - `.scratch/` (git 제외)에 EXIF 스캔(`scan.json`)·밀착 인화 스크립트가 있다: `node .scratch/sheet.mjs <날짜> <시작> <끝> <이름> [최대장수]`
 
 ## 확인이 필요한 데이터 (TODO)
@@ -61,7 +63,7 @@
 
 ## 로드맵 — 여러 여행
 1. ~~여행 단위 폴더 + `/trips/[slug]/` 라우트 + 스키마/교차 검증~~
-2. 파이프라인 스크립트 `--trip <slug>` (지금은 `almaty-2026` 고정), 사진 URL·R2 키에 slug 접두사(`/photos/<slug>/dayXX/...`), 여행별 OG 이미지
+2. ~~파이프라인 스크립트 `--trip <slug>`, 사진 URL·R2 키에 slug 접두사(`/photos/<slug>/dayXX/...`), 여행별 OG 이미지~~
 3. Cloudflare 이전: Worker 이름 변경(almaty-2026 → 범용), 새 R2 버킷, 옛 주소는 301 리다이렉트 Worker
 4. 메인 목록 페이지 디자인 (지금 `/`는 최소 목록)
 5. 관리자(create) 화면 — Astro 통합으로 `astro dev`에서만 라우트/API 주입, 운영 빌드에는 없음. 폼 → md 파일 저장

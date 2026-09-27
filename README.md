@@ -52,6 +52,8 @@ pnpm dev          # http://localhost:4321
 | `pnpm photos` | md에 적힌 사진만 원본 폴더에서 찾아 웹용(2400px JPEG + 1200px WebP)으로 변환, EXIF 제거, `photos.json`·`og.jpg` 생성 |
 | `pnpm photos:upload` | 새로 생기거나 바뀐 사진만 R2에 업로드 (`-- --local`이면 로컬 R2) |
 | `pnpm tracks` | 원본 사진 전체의 GPS로 날짜별 이동 경로 생성 |
+
+사진·경로 명령은 모든 여행을 처리하고, `-- --trip <slug>`를 붙이면 그 여행만 처리한다. 원본 사진 폴더와 숙소 프라이버시 구역은 git에서 제외된 `trips.local.json`에 여행별로 적는다.
 | `pnpm cf:preview` | 빌드 후 Cloudflare 런타임으로 로컬 확인 |
 | `pnpm cf:deploy` | 빌드 후 Cloudflare에 배포 |
 
@@ -69,7 +71,7 @@ pnpm cf:deploy       # 4. 배포
 ## 개인정보
 
 - 공개 사진은 변환할 때 EXIF(GPS 포함)를 모두 지운다.
-- 숙소의 실제 좌표는 공개하지 않는다. git에서 제외된 `privacy.local.json`에만 두고, `pnpm tracks`가 그 반경 700m 안의 GPS 점을 경로에서 잘라낸다. 사이트에 표시되는 숙소 위치는 알마티 시내 중심이다.
+- 숙소의 실제 좌표는 공개하지 않는다. git에서 제외된 `trips.local.json`에만 두고, `pnpm tracks`가 그 반경 700m 안의 GPS 점을 경로에서 잘라낸다. 사이트에 표시되는 숙소 위치는 알마티 시내 중심이다.
 - 원본·변환 사진, 업로드 기록은 git에 넣지 않는다.
 
 ## 출처

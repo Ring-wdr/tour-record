@@ -3,13 +3,17 @@
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
 import { SITE } from '../lib/site';
-import { getTrips, ymd } from '../lib/trip';
+import { getTrips, ogImage, ymd } from '../lib/trip';
 
 const trips = await getTrips();
 const covers = trips.map((t) => t.days.find((d) => d.data.day === t.data.heroDay)!);
 ---
 
-<Base title={SITE.title} description={`${SITE.titleKo} — ${trips.map((t) => t.data.title).join(' · ')}`}>
+<Base
+  title={SITE.title}
+  description={`${SITE.titleKo} — ${trips.map((t) => t.data.title).join(' · ')}`}
+  image={covers[0]?.data.cover && { src: ogImage(trips[0].slug), alt: covers[0].data.cover.alt }}
+>
   <main class="index">
     <header>
       <p class="eyebrow">{SITE.titleKo}</p>

@@ -18,4 +18,8 @@ base: [76.945, 43.238]
 heroDay: 2
 # spotlightCountry인 날의 개요에서 이 나라 밖을 어둡게 가린다 — src/data/geo/<이름>.json
 spotlight: kazakhstan
+utcOffset: "+05:00"
+tracks:
+  bbox: [[70, 35], [85, 56]] # 카자흐스탄 남동부 밖(기내·인천)은 버림
+  skipDays: [1] # 1일차는 비행 — 장소를 이은 비행 경로
 altitudeNote: 빙하 호수와 곤돌라 종점을 지나 사막의 줄무늬 산까지. 일주일 동안 오르내린 높이를 한 줄로 그려봤다.

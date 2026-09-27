@@ -99,6 +99,17 @@ export const tripSchema = z
     spotlight: z.string().optional(),
     /** 고도 그래프 섹션의 설명 문구 */
     altitudeNote: z.string().optional(),
+    /** 현지 시간대 (+05:00) — pnpm tracks가 사진 시각을 현지 날짜로 나눌 때 */
+    utcOffset: z.string().regex(/^[+-]\d{2}:\d{2}$/, '+HH:MM 형식이어야 합니다'),
+    /** pnpm tracks 옵션 */
+    tracks: z
+      .object({
+        /** 이 범위 밖 GPS 점(기내·경유지 등)은 버린다 — [[서, 남], [동, 북]] */
+        bbox: z.tuple([lngLat, lngLat]).optional(),
+        /** 사진 궤적 대신 장소를 이은 선을 쓰는 날 (비행만 있는 날 등) */
+        skipDays: z.array(z.number().int().min(1)).default([]),
+      })
+      .default({ skipDays: [] }),
   })
   .refine((t) => t.start <= t.end, { message: 'start가 end보다 늦습니다', path: ['end'] });
 

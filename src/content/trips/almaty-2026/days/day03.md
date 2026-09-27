@@ -8,7 +8,7 @@ driveKm: 60
 tone: { accent: "#9cc3ff", from: "#1c2a44", to: "#8fb3d9" } # 설산의 푸른빛
 toBase: true
 cover:
-  src: /photos/day03/20260913_115111.jpg
+  src: /photos/almaty-2026/day03/20260913_115111.jpg
   alt: 탈가르 패스에서 바라본 봉우리들
 stops:
   - id: medeu
@@ -21,8 +21,8 @@ stops:
     camera: { zoom: 13.5, pitch: 60, bearing: 150 }
     note: 메데우에서 곤돌라를 타고 침블락으로 올라간다.
     photos:
-      - { src: /photos/day03/20260913_093845.jpg, alt: 곤돌라 승강장 }
-      - { src: /photos/day03/20260913_105441.jpg, alt: 곤돌라 케이블 너머의 산 }
+      - { src: /photos/almaty-2026/day03/20260913_093845.jpg, alt: 곤돌라 승강장 }
+      - { src: /photos/almaty-2026/day03/20260913_105441.jpg, alt: 곤돌라 케이블 너머의 산 }
   - id: talgar-pass
     name: 침블락 · 탈가르 패스
     nameEn: Shymbulak · Talgar Pass
@@ -33,12 +33,12 @@ stops:
     camera: { zoom: 13.2, pitch: 70, bearing: 200 }
     note: 곤돌라 종점 탈가르 패스(3,200m). 능선을 조금 더 오르자 휴대폰 GPS에 3,264m가 찍혔다. 네 시간 넘게 머물렀다.
     photos:
-      - { src: /photos/day03/20260913_113139.jpg, alt: 구름 아래의 봉우리 }
-      - { src: /photos/day03/20260913_110420.jpg, alt: 빙하와 곤돌라 정류장 }
-      - { src: /photos/day03/20260913_115133.jpg, alt: 두 팔을 벌리고 }
-      - { src: /photos/day03/20260913_114620.jpg, alt: 빙하가 보이는 능선 }
-      - { src: /photos/day03/20260913_143244.jpg, alt: 오후의 계곡 }
-      - { src: /photos/day03/20260913_150049.jpg, alt: 내려가기 전 마지막 풍경 }
+      - { src: /photos/almaty-2026/day03/20260913_113139.jpg, alt: 구름 아래의 봉우리 }
+      - { src: /photos/almaty-2026/day03/20260913_110420.jpg, alt: 빙하와 곤돌라 정류장 }
+      - { src: /photos/almaty-2026/day03/20260913_115133.jpg, alt: 두 팔을 벌리고 }
+      - { src: /photos/almaty-2026/day03/20260913_114620.jpg, alt: 빙하가 보이는 능선 }
+      - { src: /photos/almaty-2026/day03/20260913_143244.jpg, alt: 오후의 계곡 }
+      - { src: /photos/almaty-2026/day03/20260913_150049.jpg, alt: 내려가기 전 마지막 풍경 }
   - id: georgian-dinner
     name: 조지아 요리 저녁
     nameEn: Georgian Dinner
@@ -49,10 +49,10 @@ stops:
     camera: { zoom: 15.5, pitch: 55, bearing: 20 }
     note: 아바이 오페라 극장 앞을 지나 조지아 식당으로. 힌칼리와 하차푸리.
     photos:
-      - { src: /photos/day03/20260913_205159.jpg, alt: 조지아 요리 한 상 }
-      - { src: /photos/day03/20260913_205141.jpg, alt: 힌칼리 }
-      - { src: /photos/day03/20260913_193505.jpg, alt: 아바이 오페라 극장 }
-      - { src: /photos/day03/20260913_202047.jpg, alt: 식당 테라스 }
+      - { src: /photos/almaty-2026/day03/20260913_205159.jpg, alt: 조지아 요리 한 상 }
+      - { src: /photos/almaty-2026/day03/20260913_205141.jpg, alt: 힌칼리 }
+      - { src: /photos/almaty-2026/day03/20260913_193505.jpg, alt: 아바이 오페라 극장 }
+      - { src: /photos/almaty-2026/day03/20260913_202047.jpg, alt: 식당 테라스 }
   - id: zenkov-night
     name: 젠코브 성당 야경
     nameEn: Zenkov Cathedral at Night
@@ -63,10 +63,10 @@ stops:
     camera: { zoom: 16, pitch: 60, bearing: 45 }
     note: 판필로프 공원의 어둠 속에 조명을 받은 성당이 떠 있다. 공원 끝에는 꺼지지 않는 불꽃이 타는 전쟁 기념비가 있다.
     photos:
-      - { src: /photos/day03/20260913_211804.jpg, alt: 밤의 젠코브 성당 }
-      - { src: /photos/day03/20260913_212141.jpg, alt: 성당 정면 }
-      - { src: /photos/day03/20260913_212352.jpg, alt: 성당 측면 }
-      - { src: /photos/day03/20260913_213335.jpg, alt: 영원의 불꽃 }
+      - { src: /photos/almaty-2026/day03/20260913_211804.jpg, alt: 밤의 젠코브 성당 }
+      - { src: /photos/almaty-2026/day03/20260913_212141.jpg, alt: 성당 정면 }
+      - { src: /photos/almaty-2026/day03/20260913_212352.jpg, alt: 성당 측면 }
+      - { src: /photos/almaty-2026/day03/20260913_213335.jpg, alt: 영원의 불꽃 }
 ---
 
 오늘의 행선지는 침블락. 메데우에서 곤돌라를 타고 해발 3,200m 탈가르 패스까지 올라갔다. 40~50분 걸리는 긴 구간이었지만, 올라가는 내내 창밖으로 아름다운 풍경이 이어졌다.

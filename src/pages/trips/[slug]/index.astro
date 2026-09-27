@@ -7,7 +7,7 @@ import DayRail from '../../../components/DayRail.astro';
 import DayChapter from '../../../components/DayChapter.astro';
 import AltitudeLine from '../../../components/AltitudeLine.astro';
 import Outro from '../../../components/Outro.astro';
-import { getTrips, tripStats, dayRoute, type Trip } from '../../../lib/trip';
+import { getTrips, tripStats, dayRoute, ogImage, type Trip } from '../../../lib/trip';
 
 export const getStaticPaths = (async () => {
   const trips = await getTrips();
@@ -39,7 +39,7 @@ const mapData = {
 <Base
   title={`${t.title} — ${t.subtitle}`}
   description={t.description}
-  image={heroDay.data.cover && { src: '/photos/og.jpg', alt: heroDay.data.cover.alt }}
+  image={heroDay.data.cover && { src: ogImage(trip.slug), alt: heroDay.data.cover.alt }}
 >
   <Hero trip={trip} cover={heroDay} />
   <Stats stats={stats} />

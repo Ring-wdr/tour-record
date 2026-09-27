@@ -61,6 +61,7 @@ const DAY_MS = 86_400_000;
  * - 날짜 파일 dayXX.md의 XX = frontmatter day, 1일차부터 빠짐없이
  * - date = start + (day - 1), end를 넘지 않음
  * - 장소 id는 여행 전체에서 겹치지 않음
+ * - /photos 사진은 /photos/<slug>/dayXX/ 아래 (pnpm photos·R2 키 규칙)
  * - heroDay가 있는 날이어야 하고, spotlightCountry를 쓰면 trip.yaml의 spotlight 국경 파일이 있어야 함
  */
 export function checkTrip(trip: Trip) {
@@ -81,6 +82,10 @@ export function checkTrip(trip: Trip) {
     if (date > t.end) errors.push(`${file}.md: date ${ymd(date, '-')}가 여행 끝(${ymd(t.end, '-')}) 이후입니다`);
     if (spotlightCountry && !trip.geo)
       errors.push(`${file}.md: spotlightCountry를 쓰려면 trip.yaml에 spotlight(src/data/geo/<이름>.json)가 필요합니다`);
+    const dir = `/photos/${slug}/${file}/`;
+    for (const p of [d.data.cover, ...stops.flatMap((s) => s.photos)]) {
+      if (p?.src.startsWith('/photos/') && !p.src.startsWith(dir)) errors.push(`${file}.md: 사진 ${p.src}는 ${dir} 아래여야 합니다`);
+    }
     for (const s of stops) {
       const prev = stopIds.get(s.id);
       if (prev != null) errors.push(`${file}.md: 장소 id '${s.id}'가 ${prev}일차와 겹칩니다`);
@@ -90,7 +95,11 @@ export function checkTrip(trip: Trip) {
   if (days.length && !days.some((d) => d.data.day === t.heroDay)) errors.push(`trip.yaml: heroDay ${t.heroDay}일차가 없습니다`);
   if (t.spotlight && !trip.geo) errors.push(`trip.yaml: src/data/geo/${t.spotlight}.json이 없습니다`);
 
-  if (errors.length) throw new Error(`[${slug}] 여행 데이터 오류\n  - ${errors.join('\n  - ')}`);
+  if (errors.length) {
+    const shown = errors.slice(0, 15);
+    if (errors.length > shown.length) shown.push(`… 외 ${errors.length - shown.length}개`);
+    throw new Error(`[${slug}] 여행 데이터 오류 ${errors.length}개\n  - ${shown.join('\n  - ')}`);
+  }
 }
 
 /**
@@ -131,6 +140,9 @@ export function tripStats(days: Day[]) {
     photos: stops.reduce((n, s) => n + s.photos.length, 0),
   };
 }
+
+/** 링크 미리보기 이미지 (pnpm photos가 heroDay 표지로 만든다) */
+export const ogImage = (slug: string) => `/photos/${slug}/og.jpg`;
 
 /** 화면 표시용(display)은 카드·모자이크에 쓰는 1200px WebP, src는 라이트박스용 2400px JPEG */
 export type ResolvedPhoto = PhotoInput & { exists: boolean; w: number; h: number; display: string };

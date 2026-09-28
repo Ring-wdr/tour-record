@@ -16,7 +16,6 @@
     "cf:preview": "pnpm build && wrangler dev",
     "cf:deploy": "pnpm build && wrangler deploy",
     "photos:upload": "node scripts/upload-photos.mjs",
-    "cf:deploy:legacy": "wrangler deploy -c wrangler.legacy.jsonc",
     "check": "astro check"
   },
   "dependencies": {

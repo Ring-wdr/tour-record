@@ -63,7 +63,6 @@ pnpm dev          # http://localhost:4321
 | `pnpm cf:preview` | 빌드 후 Cloudflare 런타임으로 로컬 확인 |
 | `pnpm cf:deploy` | 빌드 후 Cloudflare에 배포 |
 | `pnpm check` | 타입 검사 (astro check) |
-| `pnpm cf:deploy:legacy` | 옛 주소(almaty-2026.…workers.dev)의 301 리다이렉트 Worker 배포 |
 
 `pnpm deploy`는 pnpm 내장 명령과 겹치므로 `cf:deploy`를 쓴다.
 

@@ -23,7 +23,7 @@
 | 사이트 | [Astro 7](https://astro.build) 정적 빌드, 여행마다 한 페이지 (`/trips/<slug>/`) |
 | 지도 | [MapLibre GL 6](https://maplibre.org) + [OpenFreeMap](https://openfreemap.org) `dark` 스타일 + AWS terrarium 고도 타일 |
 | 사진 | [sharp](https://sharp.pixelplumbing.com)로 변환, [PhotoSwipe 5](https://photoswipe.com) 라이트박스 |
-| 호스팅 | Cloudflare Workers Static Assets + R2(사진) |
+| 호스팅 | Cloudflare Workers Static Assets + R2 커스텀 도메인(사진, `photos.tour-record.page`) |
 
 ## 구조
 
@@ -34,7 +34,7 @@ src/schemas/trip.ts             콘텐츠 스키마 (zod)
 src/components/                 Hero, Stats, DayChapter, AltitudeLine, DayRail, Outro, Photo
 src/scripts/story.ts            스크롤 ↔ 지도 연동 (IntersectionObserver)
 src/data/geo/                   국경선 (Natural Earth)
-worker/index.ts                 /photos/* 를 R2에서 서빙하는 Worker
+worker/index.ts                 옛 사진 주소 /photos/* 를 사진 도메인으로 301
 scripts/                        사진 변환·업로드, 경로 생성, MapLibre 워커 복사
 ```
 

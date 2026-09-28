@@ -22,7 +22,7 @@ const angle = [...photo.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
     isStatic ? (
       <img
         class:list={['photo', className]}
-        src={p.src}
+        src={p.full}
         alt={p.alt}
         width={p.w}
         height={p.h}
@@ -32,7 +32,7 @@ const angle = [...photo.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
     ) : (
       <a
         class:list={['photo', 'pswp-item', className]}
-        href={p.src}
+        href={p.full}
         data-pswp-width={p.w}
         data-pswp-height={p.h}
         data-caption={p.caption ?? p.alt}

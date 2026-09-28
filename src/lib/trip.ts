@@ -1,5 +1,6 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { tripIssues } from '../schemas/check';
+import { PHOTO_ORIGIN } from './site';
 
 export type Day = CollectionEntry<'days'>;
 export type Stop = Day['data']['stops'][number];
@@ -115,10 +116,13 @@ export function tripStats(days: Day[]) {
 }
 
 /** 링크 미리보기 이미지 (pnpm photos가 heroDay 표지로 만든다) */
-export const ogImage = (slug: string) => `/photos/${slug}/og.jpg`;
+export const ogImage = (slug: string) => `${PHOTO_ORIGIN}/photos/${slug}/og.jpg`;
 
-/** 화면 표시용(display)은 카드·모자이크에 쓰는 1200px WebP, src는 라이트박스용 2400px JPEG */
-export type ResolvedPhoto = PhotoInput & { exists: boolean; w: number; h: number; display: string };
+/**
+ * 화면 표시용(display)은 카드·모자이크에 쓰는 1200px WebP, full은 라이트박스용 2400px JPEG — 둘 다 사진 도메인까지 붙은 주소.
+ * src는 콘텐츠에 적힌 경로 그대로(사진을 구분하는 키, 파일명 시각)라 화면 주소로 쓰지 않는다.
+ */
+export type ResolvedPhoto = PhotoInput & { exists: boolean; w: number; h: number; display: string; full: string };
 
 /**
  * 사진 크기는 pnpm photos가 만든 여행 폴더의 photos.json에서 읽는다.
@@ -127,12 +131,12 @@ export type ResolvedPhoto = PhotoInput & { exists: boolean; w: number; h: number
  */
 export function resolvePhoto(p: PhotoInput): ResolvedPhoto {
   if (/^https?:\/\//.test(p.src)) {
-    return { ...p, exists: true, w: p.w ?? 1600, h: p.h ?? 1067, display: p.src };
+    return { ...p, exists: true, w: p.w ?? 1600, h: p.h ?? 1067, display: p.src, full: p.src };
   }
   const size = photoSizes[p.src];
   return size
-    ? { ...p, exists: true, ...size, display: p.src.replace(/\.jpg$/i, '-md.webp') }
-    : { ...p, exists: false, w: 1600, h: 1067, display: p.src };
+    ? { ...p, exists: true, ...size, display: PHOTO_ORIGIN + p.src.replace(/\.jpg$/i, '-md.webp'), full: PHOTO_ORIGIN + p.src }
+    : { ...p, exists: false, w: 1600, h: 1067, display: p.src, full: p.src };
 }
 
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];

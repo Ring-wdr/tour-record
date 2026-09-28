@@ -44,7 +44,7 @@ const coverAngle = cover ? [...cover.photo.src].reduce((a, c) => a + c.charCodeA
             /* 표지도 크게 볼 수 있다 — 타임라인 사진과 한 갤러리 (scripts/lightbox.ts). 칸에 맞춰 잘려 있으므로 data-cropped */
             <a
               class="dt-lb zoom"
-              href={cover.photo.src}
+              href={cover.photo.full}
               data-pswp-width={cover.photo.w}
               data-pswp-height={cover.photo.h}
               data-cropped="true"
@@ -53,7 +53,7 @@ const coverAngle = cover ? [...cover.photo.src].reduce((a, c) => a + c.charCodeA
             >
               <img
                 src={cover.photo.display}
-                srcset={`${cover.photo.display} 1200w, ${cover.photo.src} ${cover.photo.w}w`}
+                srcset={`${cover.photo.display} 1200w, ${cover.photo.full} ${cover.photo.w}w`}
                 sizes="(min-width: 900px) 64vw, 100vw"
                 alt={cover.photo.alt}
                 width={cover.photo.w}

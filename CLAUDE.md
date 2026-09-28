@@ -8,7 +8,7 @@
 - Astro 7 (정적 빌드, `output: 'static'`). 여행 페이지는 `src/pages/trips/[slug]/index.astro` 하나가 `getStaticPaths`로 여행마다 생성. 여행 추가 = 재빌드·재배포
 - MapLibre GL 6 + OpenFreeMap `dark` 스타일 (키 없음) + AWS terrarium DEM (3D 지형/음영)
 - PhotoSwipe 5 (라이트박스), sharp (빌드 시 사진 크기 측정)
-- 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`) + R2(`tour-record-photos`, 키 = URL 경로). `worker/index.ts`가 `/photos/*`만 R2에서 서빙하고 나머지는 정적 에셋. 사진은 `public/.assetsignore`로 정적 에셋에서 제외. `pnpm cf:preview`(로컬 확인) → `pnpm cf:deploy`. `pnpm deploy`는 pnpm 내장 명령과 겹치므로 쓰지 않는다
+- 배포: Cloudflare Workers Static Assets (`wrangler.jsonc`) + R2(`tour-record-photos`, 키 = URL 경로). 사진은 R2 버킷의 커스텀 도메인 `https://photos.tour-record.page`에서 CDN 캐시로 나간다(Worker를 거치지 않아 Worker 요청 한도와 무관, 정적 에셋 요청도 무료·무제한). 페이지의 사진 주소 = `src/lib/site.ts` `PHOTO_ORIGIN` + 콘텐츠 경로(`resolvePhoto`의 `display`·`full`, `ogImage`) — 개발 서버는 `PHOTO_ORIGIN`이 빈 문자열이라 `public/photos`. `worker/index.ts`는 옛 사진 주소(`<사이트>/photos/*`)를 사진 도메인으로 301만 한다. 사진은 `public/.assetsignore`로 정적 에셋에서 제외. `pnpm cf:preview`(로컬 확인) → `pnpm cf:deploy`. `pnpm deploy`는 pnpm 내장 명령과 겹치므로 쓰지 않는다
 - 관리자 화면 `/admin`(목록), `/admin/new`(새 여행 만들기): **`astro dev`에서만 존재.** `integrations/admin`이 dev일 때만 라우트를 주입하고 API는 Vite 미들웨어라 운영 빌드에 없다. 빌드 후 `dist/admin`·`dist/api`가 있으면 빌드 실패
 - 패키지 매니저: pnpm. 타입 검사: `pnpm check` (astro check — TypeScript 6 고정, 7은 아직 미지원)
 
@@ -63,7 +63,7 @@
 - 변환된 사진은 git에 넣지 않는다 (`.gitignore`). 사진 크기는 여행 폴더의 `photos.json`(커밋됨)에 있어 사진 파일 없이도 빌드된다
 - 새 여행의 사진은 관리자 화면에서 파일로 올린다(변환·EXIF 제거·R2까지 한 번에, 파일 이름은 원본 이름에서 영문·숫자·`_-`만). 원본 폴더에서 md 경로로 고르는 방식(`pnpm photos`)은 기존 여행용
 - 사진 추가/변경 순서: dayXX.md 수정 → `pnpm photos` → `pnpm photos:upload`(바뀐 파일만 R2에 업로드) → `pnpm cf:deploy`
-- 로컬에서 R2까지 확인: `pnpm photos:upload -- --local` → `pnpm cf:preview`
+- `pnpm cf:preview`(운영 빌드)의 사진은 원격 사진 도메인에서 온다 → 새 사진은 `pnpm photos:upload` 뒤에 보인다
 - 링크 미리보기 `/photos/<slug>/og.jpg`(1200×630)는 `pnpm photos`가 trip.yaml `heroDay`의 표지(첫 화면 사진)로 만든다. `/`는 가장 최근 여행의 것을 쓴다
 - trip.yaml `tracks.maxAltitude`: GPS 고도가 이보다 높은 점(착륙 직전 기내 사진) 제외. `tracks.dayStartHour`: 현지 그 시각 전 사진은 전날 경로(자정 넘어 도착한 첫날). 사진 궤적이 있는 날도 맨 앞·맨 뒤의 `kind: flight` 장소는 경로선에 이어 붙는다
 - `pnpm tracks` → 원본 사진 전체의 GPS를 실제 시각(EXIF 오프셋 반영) 순으로 이어 날짜별 경로(`tracks.json`) 생성, 시속 180km 초과 점은 GPS 오류로 제외. 날짜 구분은 trip.yaml `utcOffset`, `tracks.skipDays`(알마티 1일차 = 비행)는 장소를 잇는 선, `tracks.bbox` 밖 점은 버림
@@ -78,7 +78,7 @@
 - 4일차 Navat 아점·아르바트 거리는 일기에만 있고 지도 장소로는 아직 없음 (사진 09:30~10:50, 12:20~14:00 묶음)
 - `driveKm`은 사진 GPS 직선거리 × 1.25 추정치
 - 배포 주소: https://tour-record.page (Cloudflare Registrar, `wrangler.jsonc` `routes`의 커스텀 도메인). https://tour-record.akswnd55.workers.dev 도 계속 열려 있다(og:url은 `site` 기준이라 새 주소). 주소를 바꾸면 `astro.config.mjs`의 `site`, `worker/legacy-redirect.ts`의 TARGET도 교체
-- 사진은 Worker가 엣지 캐시(Cache API, 30일)에 넣는다. 같은 파일 이름으로 사진을 바꿨으면 배포 뒤 Cloudflare 대시보드에서 캐시 퍼지(tour-record.page 영역)
+- 사진 도메인은 CDN이 30일 캐시한다(R2 객체의 `Cache-Control`). 같은 파일 이름으로 사진을 바꿨으면 업로드 뒤 Cloudflare 대시보드 → tour-record.page 영역 → 캐시 퍼지(URL: `https://photos.tour-record.page/photos/...`). 도메인을 바꾸면 `src/lib/site.ts`·`worker/index.ts`·`worker/legacy-redirect.ts`의 PHOTO_ORIGIN을 같이
 - 옛 주소 https://almaty-2026.akswnd55.workers.dev 는 `worker/legacy-redirect.ts`(`wrangler.legacy.jsonc`, `pnpm cf:deploy:legacy`)가 새 주소로 301. 옛 버킷 `almaty-2026-photos`는 더 이상 쓰지 않음(삭제 전 보관 중)
 - 영상 115개(mp4)는 아직 사용하지 않음
 
@@ -97,5 +97,5 @@
 2. ~~사진 분류(EXIF 시각/GPS) + 장소 재구성 + 웹용 변환~~
 3. ~~실제 이동 경로: 사진 GPS 궤적 (`pnpm tracks` → 여행 폴더의 `tracks.json`)~~ — 사진이 드문 구간(야간 귀가 등)은 직선. 필요하면 OSRM으로 도로 스냅
 4. 짧은 영상 클립(음소거 루프) 추가
-5. ~~사진 R2 업로드~~ (URL은 그대로 `/photos/...`, Worker가 R2에서 서빙)
+5. ~~사진 R2 업로드~~ (콘텐츠 경로는 `/photos/...`, 운영 주소는 사진 도메인 `photos.tour-record.page`)
 6. ~~OG 이미지~~, ~~배포~~, 커스텀 도메인(구매 예정)

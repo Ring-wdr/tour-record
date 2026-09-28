@@ -38,7 +38,7 @@ const sizes = !big
     : shot.size === 'full'
       ? `(max-width: 719px) calc(100vw * ${k(zoom)}), (min-width: 1440px) calc(1440px * ${k(share * zoom)}), calc(100vw * ${k(share * zoom)})`
       : `(max-width: 719px) calc((100vw - 68px) * ${k(zoom)}), (min-width: 1440px) calc(1063px * ${k(share * zoom)}), calc(73vw * ${k(share * zoom)})`;
-const srcset = big ? `${shot.display} ${mdW}w, ${shot.src} ${shot.w}w` : undefined;
+const srcset = big ? `${shot.display} ${mdW}w, ${shot.full} ${shot.w}w` : undefined;
 ---
 
 <figure
@@ -50,7 +50,7 @@ const srcset = big ? `${shot.display} ${mdW}w, ${shot.src} ${shot.w}w` : undefin
     shot.exists ? (
       <a
         class:list={['img', 'dt-lb', { crop: !!crop }]}
-        href={shot.src}
+        href={shot.full}
         data-pswp-width={shot.w}
         data-pswp-height={shot.h}
         data-caption={shot.caption ?? shot.alt}

@@ -12,9 +12,10 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    // 사진은 dist에 넣지 않고(.assetsignore) R2에서 Worker가 서빙
+    // 사진은 dist에 넣지 않고(.assetsignore) R2 커스텀 도메인(photos.tour-record.page)에서 나간다.
+    // Worker는 옛 사진 주소 /photos/*만 받아 그쪽으로 301 (worker/index.ts)
     "run_worker_first": ["/photos/*"]
   },
-  // 키 = URL 경로 (photos/<slug>/dayXX/...). pnpm photos:upload가 이 버킷 이름을 읽는다
+  // 키 = URL 경로 (photos/<slug>/dayXX/...). Worker는 쓰지 않지만 pnpm photos:upload·관리자가 이 버킷 이름을 읽는다
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "tour-record-photos" }]
 }

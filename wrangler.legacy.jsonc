@@ -1,7 +1,0 @@
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  // 옛 주소 almaty-2026.akswnd55.workers.dev → 새 사이트로 301 (worker/legacy-redirect.ts)
-  "name": "almaty-2026",
-  "main": "worker/legacy-redirect.ts",
-  "compatibility_date": "2026-09-01"
-}

@@ -1,0 +1,549 @@
+---
+// 타임라인의 한 순간 = 장소 하나: 시각 · 번호 · 이름 · 짧은 글 · 시각이 박힌 사진들.
+// 스크롤 = 시계라서 사진은 늘 시간순으로 놓인다 (dayXX.md size):
+//   보통 = 글 아래(한 장이면 측정폭 가득, 여럿이면 정렬 행)
+//   small = 작게 — 첫 본사진보다 이르면 글 옆(표지판 등), 늦으면 본사진 오른쪽 짝(같은 음식의 두 번째 컷 등)
+//   full = 페이지 폭 가득(장소 끝). 척추는 그 사진 밑에서 끊겼다가 사진·캡션이 끝난 뒤 다시 이어진다
+// 사진이 없는 장소는 글만. 하루 맨 앞·뒤의 사진 없는 도착·출발은 번호 없는 끝줄(bookend, lib.ts).
+// 다음 장소까지는 여백 = 이 장소의 마지막 시각 → 다음 시각(√분), 그 여백에 정시 눈금이 지나간다.
+// 다음 장소로 가는 길에 사진이 없어 지도에서 점선인 구간은 여기 척추도 점선
+import type { Tone, Trip } from '../../lib/trip';
+import { KIND_LABEL, isoAt, scriptRuns, type Moment } from '../lib';
+import { clock, skyAt } from '../sky';
+import ShotFigure from './Shot.astro';
+
+interface Props {
+  trip: Trip;
+  moment: Moment;
+  next?: Moment;
+  /** 번호 붙은 장소 수 ("03/08") */
+  total: number;
+  tone: Tone;
+}
+const { trip, moment: m, next, total, tone } = Astro.props;
+const s = m.stop;
+const beat = m.shots.length === 0;
+const full = m.shots.filter((x) => x.size === 'full');
+const main = m.shots.filter((x) => !x.size);
+// 작은 사진의 자리 = 시각으로: 첫 큰 사진(보통, 없으면 전폭)보다 이르면 글 옆, 늦으면 본사진 뒤
+const firstBig = Math.min(...[...main, ...full].map((x) => x.min ?? Infinity));
+const smalls = m.shots.filter((x) => x.size === 'small');
+const insets = main.length ? smalls.filter((x) => (x.min ?? -Infinity) <= firstBig) : smalls;
+const trail = main.length ? smalls.filter((x) => !insets.includes(x)) : [];
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const nameRuns = scriptRuns(s.name);
+
+/**
+ * 넓은 화면에서 사진마다 한 줄 안의 몫 — 줄 맞춤(flex, 비율만큼 늘어남)처럼 목표 높이로 줄을 나눠 본다.
+ * srcset sizes 근사용 (Shot.astro) — 아래 CSS의 --row-h·gap과 같은 값: 본사진 글 열 1063px·240px, 전폭 1440px·547px
+ */
+function shares(list: typeof m.shots, width: number, rowH: number, gap = 18) {
+  const out = new Map<(typeof list)[number], number>();
+  let line: typeof list = [];
+  let used = 0;
+  const flush = () => {
+    const sum = line.reduce((a, x) => a + x.ratio, 0);
+    line.forEach((x) => out.set(x, x.ratio / sum));
+    line = [];
+    used = 0;
+  };
+  for (const x of list) {
+    const w = x.ratio * rowH;
+    if (line.length && used + gap + w > width) flush();
+    used += (line.length ? gap : 0) + w;
+    line.push(x);
+  }
+  if (line.length) flush();
+  return out;
+}
+const mainShare = shares(main, 1063, 240);
+const fullShare = shares(full, 1440, 547);
+
+// 다음 장소까지의 여백 — 이 장소의 마지막 시각부터 다음 장소까지(m.move)의 제곱근에 비례 (좁은 화면은 CSS가 0.7배)
+const move = m.move ?? 0;
+const gapPx = next ? Math.round(Math.min(200, Math.max(48, 24 + Math.sqrt(move) * 12))) : 0;
+// 스크롤 시계(scripts/daytrip.ts)도 여백을 같은 구간(m.last → next.min), 같은 비율로 흘린다
+const ticks: number[] = [];
+if (next && next.min > m.last) {
+  for (let h = Math.floor(m.last / 60) + 1; h * 60 < next.min; h++) {
+    // 앞뒤 시각과 10분 안쪽이면 눈금을 뺀다 — "09:00" 바로 아래 "09:02"처럼 겹쳐 읽히지 않게
+    if (h * 60 - m.last >= 10 && next.min - h * 60 >= 10) ticks.push(h * 60);
+  }
+}
+const at = (t: number) => (t - m.last) / (next!.min - m.last);
+// 여백에는 정시 눈금만 — 걸린 시간("+ 1h 21m")은 쓰지 않는다
+const hours = ticks.map((t) => ({ label: clock(t), p: at(t), c: skyAt(t).accent }));
+---
+
+<li
+  id={m.key}
+  class:list={['m', 'dt-m', { beat, end: m.bookend, last: !next, jump: m.jump, 'has-bleed': full.length > 0 }]}
+  data-min={m.min}
+  data-last={m.last}
+  data-name={s.name}
+  style={`--c:${m.color};--c2:${next?.color ?? m.color};--gap:${gapPx}px`}
+>
+  <div class="main">
+    <div class="when">
+      {m.time && <time class="t" datetime={isoAt(trip, m.min)}>{m.time}</time>}
+      {!m.bookend && <span class="n" aria-hidden="true">{pad2(m.n)}<span>/{pad2(total)}</span></span>}
+    </div>
+    <div class="spine" aria-hidden="true"><span class="dot"></span></div>
+    {
+      m.bookend ? (
+        /* 끝줄 — 번호도 사진도 없이 한 줄: 종류 · 이름 · 영문, 아래 짧은 글 */
+        <div class="body dt-reveal">
+          <div class="end-row">
+            <p class="kind">{KIND_LABEL[s.kind]}</p>
+            <h3>{nameRuns.map((r) => (r.latin ? <span class="lat">{r.t}</span> : r.t))}</h3>
+            <p class="en" lang="en">{s.nameEn}</p>
+          </div>
+          {s.note && <p class="note">{s.note}</p>}
+        </div>
+      ) : (
+        <div class="body dt-reveal">
+          <p class="kind">
+            <span>{KIND_LABEL[s.kind]}</span>
+            {s.elevation != null && <span>▲ {s.elevation.toLocaleString('en-US')} m</span>}
+          </p>
+          <h3>{nameRuns.map((r) => (r.latin ? <span class="lat">{r.t}</span> : r.t))}</h3>
+          <p class="en" lang="en">{s.nameEn}</p>
+          <div class:list={['lead', { 'has-insets': insets.length > 0 }]}>
+            <p class="note">{s.note}</p>
+            {insets.length > 0 && (
+              <div class="insets">
+                {insets.map((shot) => (
+                  <ShotFigure shot={shot} tone={tone} />
+                ))}
+              </div>
+            )}
+          </div>
+          {(main.length > 0 || trail.length > 0) && (
+            <div class:list={['photos', { 'has-trail': trail.length > 0 }]}>
+              {main.length > 0 && (
+                <div class:list={['plates', `n${Math.min(main.length, 4)}`]}>
+                  {main.map((shot) => (
+                    <ShotFigure shot={shot} tone={tone} share={mainShare.get(shot)} />
+                  ))}
+                </div>
+              )}
+              {trail.length > 0 && (
+                <div class="trail">
+                  {trail.map((shot) => (
+                    <ShotFigure shot={shot} tone={tone} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+  </div>
+  {
+    full.length > 0 && (
+      <div class="bleed dt-reveal">
+        {full.map((shot) => (
+          <ShotFigure shot={shot} tone={tone} share={fullShare.get(shot)} />
+        ))}
+      </div>
+    )
+  }
+  {
+    next && (
+      <div class="move" aria-hidden="true">
+        {hours.map((h) => (
+          <span class="hr" style={`--p:${h.p.toFixed(4)};--hc:${h.c}`}>
+            <i />
+            <b>{h.label}</b>
+          </span>
+        ))}
+      </div>
+    )
+  }
+</li>
+
+<style>
+  .m {
+    --when: clamp(112px, 12vw, 176px);
+    --cg: clamp(12px, 2vw, 28px);
+    /* 척추 가운데의 x */
+    --spine-x: calc(var(--when) + var(--cg) + 18px);
+    --g: var(--gap);
+    /* 글과 전폭 사진 줄 사이 */
+    --bleed-gap: clamp(40px, 6vw, 88px);
+    position: relative;
+    padding-bottom: var(--g);
+    /* 시계 막대에 가리지 않게 */
+    scroll-margin-top: 84px;
+  }
+  /* 시각 · 점 · 글. 전폭 사진 줄(.bleed)과 여백(.move)은 이 격자 밖 — 크롬은 격자 항목의 sticky를
+     격자 영역이 아니라 격자 컨테이너로 제한하므로, 시각 열이 전폭 사진 전에 멈추려면 컨테이너를 나눠야 한다 */
+  .main {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--when) 36px minmax(0, 1fr);
+    column-gap: var(--cg);
+  }
+
+  /* ---------- 시각 ---------- */
+  .when {
+    grid-column: 1;
+    align-self: start;
+    /* 사진이 긴 장소에서도 시각이 따라온다 — 시계 막대 바로 아래 */
+    position: sticky;
+    top: 92px;
+    text-align: right;
+  }
+  .t {
+    display: block;
+    font-family: var(--serif-display);
+    font-weight: 300;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(40px, 4.4vw, 64px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums lining-nums;
+    color: var(--c);
+  }
+  .n {
+    display: block;
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--film);
+  }
+  .n span {
+    color: var(--film-dim);
+  }
+
+  /* ---------- 척추 — 점 아래 ~ 글·사진 끝. 여백(.move)은 따로 ----------
+     전폭 사진 줄이 있으면 사진 위 끝까지만(사진이 덮는다) — 전폭 사진과 그 캡션 구간에는 선이 지나가지 않는다 */
+  .main::before {
+    content: '';
+    position: absolute;
+    left: var(--spine-x);
+    top: 22px;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--c);
+    opacity: 0.55;
+  }
+  .has-bleed .main::before {
+    bottom: calc(-1 * var(--bleed-gap) - 2px);
+  }
+  .last .main::before {
+    background: linear-gradient(var(--c), transparent);
+  }
+  /* 하루를 닫는 끝줄 — 점 아래로는 선이 없다 */
+  .end.last .main::before {
+    display: none;
+  }
+  .spine {
+    grid-column: 2;
+    position: relative;
+  }
+  .dot {
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    top: 12px;
+    width: 15px;
+    height: 15px;
+    margin-left: -7.5px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: 2px solid var(--c);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 14%, transparent);
+  }
+  /* 사진 없는 장소 — 속이 찬 작은 점 */
+  .beat .dot {
+    width: 11px;
+    height: 11px;
+    margin-left: -5.5px;
+    top: 14px;
+    background: var(--c);
+    box-shadow: none;
+  }
+  /* 끝줄 — 속이 빈 점 */
+  .end .dot {
+    width: 13px;
+    height: 13px;
+    margin-left: -6.5px;
+    top: 9px;
+    background: var(--ink);
+    box-shadow: none;
+  }
+
+  /* ---------- 여백 = 다음 장소로 가는 시간 ---------- */
+  .move {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--g);
+    pointer-events: none;
+  }
+  /* 척추가 다음 장소의 점까지 — 색은 다음 시각의 빛으로 */
+  .move::before {
+    content: '';
+    position: absolute;
+    left: var(--spine-x);
+    top: 0;
+    bottom: -12px;
+    width: 2px;
+    margin-left: -1px;
+    background: linear-gradient(var(--c), var(--c2));
+    opacity: 0.55;
+  }
+  /* 사진이 없어 지도에서 점선인 구간 */
+  .jump .move::before {
+    background: repeating-linear-gradient(to bottom, var(--c2) 0 4px, transparent 4px 10px);
+    opacity: 0.8;
+  }
+  /* 정시 눈금 — 시각은 시각 열에, 짧은 가로선이 척추를 지난다 */
+  .hr {
+    position: absolute;
+    top: calc(var(--p) * 100%);
+    left: 0;
+    width: var(--when);
+    transform: translateY(-50%);
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--hc) 60%, var(--film-dim));
+  }
+  .hr i {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--spine-x) - 6px);
+    width: 12px;
+    height: 1px;
+    background: color-mix(in srgb, var(--hc) 70%, transparent);
+  }
+
+  /* ---------- 글 ---------- */
+  .body {
+    grid-column: 3;
+    min-width: 0;
+    padding-top: 4px;
+  }
+  .kind {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--c);
+  }
+  h3 {
+    margin: 10px 0 0;
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(26px, 2.8vw, 40px);
+    line-height: 1.2;
+  }
+  /* 라틴 글자 덩어리("CAFE")는 Fraunces — Noto Serif KR의 굵은 라틴 대문자는 무겁다 */
+  h3 .lat {
+    font-family: var(--serif-display);
+    font-weight: 600;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: 0.01em;
+  }
+  .en {
+    margin: 4px 0 0;
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(16px, 1.3vw, 19px);
+    color: #cfc9be;
+  }
+  .lead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 20px clamp(28px, 3.4vw, 56px);
+    margin-top: 16px;
+  }
+  /* 글 옆 사진은 오른쪽 끝에 — 아래 본사진 짝(.trail)과 같은 열 */
+  .lead.has-insets {
+    justify-content: space-between;
+  }
+  .note {
+    flex: 1 1 22em;
+    max-width: 38em;
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(15px, 1.15vw, 17px);
+    line-height: 1.9;
+    color: #d8d2c7;
+  }
+  /* 작은 사진 — 표지판·기록 사진은 글 옆에 붙인다 */
+  .insets,
+  .trail {
+    display: grid;
+    gap: 16px;
+  }
+  .insets {
+    flex: 0 1 clamp(180px, 19vw, 260px);
+    padding-top: 6px;
+  }
+
+  /* ---------- 끝줄 (bookend) ---------- */
+  .end .t {
+    font-size: clamp(28px, 2.6vw, 38px);
+  }
+  .end-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+    padding-top: 6px;
+  }
+  .end-row .kind {
+    flex: none;
+  }
+  .end h3 {
+    margin: 0;
+    font-weight: 600;
+    font-size: clamp(18px, 1.5vw, 21px);
+    line-height: 1.3;
+  }
+  .end .en {
+    margin: 0;
+    font-size: 15px;
+    color: var(--film-dim);
+  }
+  .end .note {
+    margin-top: 6px;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--film-dim);
+  }
+
+  /* ---------- 사진 ---------- */
+  .photos {
+    margin-top: clamp(24px, 3vw, 40px);
+  }
+  /* 본사진 + 오른쪽 짝(늦게 찍은 작은 사진) — 짝은 글 옆 사진(.insets)과 같은 폭·같은 열, 아래 끝을 맞춘다 */
+  .photos.has-trail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(180px, 19vw, 260px);
+    column-gap: clamp(28px, 3.4vw, 56px);
+    align-items: end;
+  }
+  .plates {
+    /* 줄바꿈 기준 높이 — 16:9 + 21:9 두 장이 글 열(1063px) 한 줄에 들어가게. 한 줄의 실제 높이는 측정폭 / 비율 합 */
+    --row-h: 240px;
+    --max-h: min(78svh, 720px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(10px, 1.4vw, 18px);
+  }
+
+  /* 페이지 폭 가득 — 그날의 장면. 타임라인의 여백(gutter)까지 밀고 나간다 */
+  .bleed {
+    --row-h: min(560px, 38vw);
+    --max-h: min(86svh, 820px);
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: clamp(10px, 1.4vw, 18px);
+    margin: var(--bleed-gap) calc(-1 * var(--gutter)) 0;
+  }
+
+  /* ---------- 좁은 화면: 시각은 글 위로, 척추는 왼쪽 끝 ---------- */
+  @media (max-width: 719px) {
+    .m {
+      --spine-x: 11px;
+      --g: calc(var(--gap) * 0.7);
+      --bleed-gap: 32px;
+      scroll-margin-top: 88px;
+    }
+    .main {
+      grid-template-columns: 22px minmax(0, 1fr);
+      column-gap: 14px;
+    }
+    .when {
+      grid-column: 2;
+      grid-row: 1;
+      position: static;
+      text-align: left;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .t {
+      font-size: 36px;
+    }
+    .end .t {
+      font-size: 26px;
+    }
+    .n {
+      margin: 0;
+    }
+    .spine {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+    }
+    .main::before {
+      top: 18px;
+    }
+    .dot {
+      top: 10px;
+    }
+    .beat .dot {
+      top: 12px;
+    }
+    .end .dot {
+      top: 7px;
+    }
+    .body {
+      grid-column: 2;
+      grid-row: 2;
+      padding-top: 8px;
+    }
+    .end .body {
+      padding-top: 2px;
+    }
+    /* 눈금 시각은 척추 오른쪽에 */
+    .hr {
+      left: calc(var(--spine-x) + 20px);
+      width: auto;
+      text-align: left;
+    }
+    .hr i {
+      left: -26px;
+    }
+    .insets {
+      flex-basis: 64%;
+    }
+    .photos.has-trail {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 14px;
+    }
+    /* 본사진 뒤의 작은 사진(같은 음식의 두 번째 컷 등)은 본사진 아래 오른쪽에 작게 — 같은 장면이 같은 크기로 두 번 이어지지 않게 */
+    .trail {
+      width: 46%;
+      justify-self: end;
+    }
+    .plates {
+      --row-h: 220px;
+      --max-h: 480px;
+    }
+    /* 전폭 사진은 좁은 화면에서도 가장자리까지 — 한 장씩 쌓인다 (Shot.astro가 너무 납작한 사진은 높게 자른다) */
+    .bleed {
+      --row-h: 220px;
+      --max-h: 560px;
+    }
+  }
+</style>

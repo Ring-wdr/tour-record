@@ -1,7 +1,7 @@
 # 여행 기록 사이트
 
 다녀온 여행들을 시네마틱 + 매거진 + 여행 일기 톤의 인터랙티브 웹페이지로 만든다. 여행: 카자흐스탄 알마티(2026.09.11–09.17), 일본 사가(2026.08.19–08.21), 대만 타이베이(2026.09.02–09.05), 강원 영월·태백(2026.08.05–08.07).
-`/` = 여행 목록, `/trips/<slug>/` = 여행 하나의 스크롤리텔링 페이지. 모든 여행의 섹션 구성은 같다.
+`/` = 여행 목록, `/trips/<slug>/` = 여행 하나의 페이지. 여행은 두 등급: **피처**(해외·국내 다박 — 시네마틱 스크롤리텔링, 섹션 구성은 모두 같다)와 **단신**(국내 당일 — 한 페이지 전용 레이아웃). 철원 가족 당일 여행(2026.09.26)이 첫 단신.
 포트폴리오용 전체 공개. 인터랙션을 위해 분위기를 일부 희생하는 것은 허용된다.
 
 ## 스택
@@ -25,7 +25,10 @@
 - `src/data/geo/<나라>.json` — 스포트라이트용 국경 (여러 여행이 공유)
 - `src/components/DayChapter.astro` — 하루 = 타이틀 카드(불투명) → 장소 스텝(투명, 뒤에 고정 지도) → 일기 스프레드(종이)
 - `src/scripts/story.ts` — IntersectionObserver로 스텝 진입 시 지도 `flyTo`/`fitBounds`, 경로 그리기 애니메이션, 레일/진행바
-- `src/pages/index.astro` — 여행 목록 (`TripEntry` + `RouteGlyph`: 경로를 날짜 색 선으로 그린 SVG)
+- 등급: `isFeature(trip)`(`src/lib/trip.ts`) — trip.yaml `feature`가 있으면 그 값, 없으면 `country: Korea`이고 `start == end`인 여행만 단신. 라우트 `src/pages/trips/[slug]/index.astro`는 분기만 한다: 피처 → `src/components/FeatureTripPage.astro`, 단신 → `src/daytrip/DayTripPage.astro`
+- **단신(당일 여행) 페이지는 `src/daytrip/`가 따로 관리하고, 설계·규칙·사진 규칙은 `src/daytrip/CLAUDE.md`에 있다** (메모리 분리)
+- `src/pages/index.astro` — 여행 목록. 시간순은 유지하고, 피처는 `TripEntry`(큰 번호·좌우 번갈아는 피처끼리만 셈), 이어지는 단신은 `TripBrief` 한 줄 행으로 묶은 "In Brief" 블록. 첫 화면 통계는 journeys(피처)와 day trips를 따로 센다
+- `src/pages/index.astro` 세부 — (`TripEntry` + `RouteGlyph`: 경로를 날짜 색 선으로 그린 SVG)
 - 목록 ↔ 여행 페이지 전환: 문서 간 View Transition(`global.css`의 `@view-transition`). `Base.astro` head의 인라인 스크립트가 `pageswap`/`pagereveal`에서 누른 표지(`[data-vt-cover]`)와 여행 첫 화면(`#trip-hero`)에만 `trip-cover` 이름을 붙인다. 이름 붙일 요소가 첫 렌더 전에 파싱되도록 각 페이지가 `<link rel="expect" blocking="render">`를 head 슬롯에 넣는다. 표지에서 들어오면 `html.vt-from-list` → Hero의 켄번스·레터박스 연출 생략. 미지원 브라우저(Firefox)는 일반 이동
 - `integrations/admin/` — 관리자 통합: `index.ts`(dev 전용 라우트·미들웨어·빌드 검사), `api.ts`(검증 `POST /trips?dryRun=1` → 사진 한 장씩 `PUT /photos/<slug>/dayXX/<이름>`(변환) → `POST /trips`(photos.json·og.jpg → R2 업로드 → 성공하면 trip.yaml·dayXX.md 쓰기), 로컬 설정은 trips.local.json), `serialize.ts`(기존 파일과 같은 YAML 모양)
 - `src/admin/` — 관리자 페이지(`pages/`)와 폼(`editor.ts`: 상태 객체 → 폼, 입력칸 `data-k` = 상태 경로, 초안은 localStorage, 지도 클릭으로 좌표 입력). 사진은 고른 `File`을 메모리 Map에 그대로 두고 초안에는 설명과 EXIF 요약(촬영 UTC 시각·GPS·고도)만 저장 → 새로고침하면 "파일 다시 선택". 장소에 사진을 넣으면 브라우저에서 EXIF(`exifr`)를 읽어 **빈** 좌표(GPS 중앙값)·시각(가장 이른 사진, `OffsetTimeOriginal` 반영, 다음 날 06시 전은 `+1`)·고도(GPS 중앙값)를 채운다. 그 날짜가 아닌 사진은 "다른 날"로 표시하고 계산에서 뺀다

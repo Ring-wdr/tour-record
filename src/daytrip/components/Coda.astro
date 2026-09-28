@@ -1,0 +1,134 @@
+---
+// 하루의 끝 — 마지막 시각, 여행 이름(여는 면과 짝), 그날의 빛을 한 줄로 늘어놓은 띠, 목록으로 돌아가는 길
+// 마지막 장소 이름은 쓰지 않는다 — 대개 주차장·역 같은 출발 지점이라 하루를 닫는 말로 약하다(그건 타임라인 끝줄에)
+import { SITE } from '../../lib/site';
+import type { Trip } from '../../lib/trip';
+import { dateParts, isoAt, type Moment } from '../lib';
+import { skyAt } from '../sky';
+
+interface Props {
+  trip: Trip;
+  moments: Moment[];
+}
+const { trip, moments } = Astro.props;
+const t = trip.data;
+const first = moments[0];
+const last = moments.at(-1)!;
+const when = dateParts(t.start);
+// 그날의 빛 — 첫 장소부터 마지막까지 30분마다 그 시각의 색 (시계 막대·목록 단신의 띠와 같은 계산)
+const spanMin = Math.max(1, last.min - first.min);
+const spectrum = [...Array.from({ length: Math.floor(spanMin / 30) + 1 }, (_, i) => first.min + i * 30), last.min]
+  .map((m) => `${skyAt(m).accent} ${(((m - first.min) / spanMin) * 100).toFixed(1)}%`)
+  .join(', ');
+---
+
+<footer class="coda" style={`--c:${last.color}`}>
+  <p class="eyebrow">End of the day</p>
+  <p class="last"><time datetime={isoAt(trip, last.min)}>{last.time}</time></p>
+  <p class="where">{t.subtitleKo}<span lang="en"> — {t.subtitle}</span></p>
+
+  <div class="light" aria-hidden="true">
+    <i style={`background:linear-gradient(90deg, ${spectrum})`}></i>
+    <span>{first.time}</span>
+    <span>{last.time}</span>
+  </div>
+
+  <a class="back" href="/"><span aria-hidden="true">←</span> 모든 여행 <span class="en" lang="en">All journeys</span></a>
+
+  <div class="credits">
+    <span class="eyebrow">{t.title} · {when.ymd}</span>
+    <span class="eyebrow">Written by {SITE.author}</span>
+    <span class="eyebrow">Map © OpenStreetMap contributors · OpenFreeMap</span>
+  </div>
+</footer>
+
+<style>
+  .coda {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    padding: clamp(96px, 16vh, 180px) var(--gutter) 56px;
+  }
+  .eyebrow {
+    margin: 0;
+  }
+  .last {
+    margin: 14px 0 0;
+    font-family: var(--serif-display);
+    font-weight: 300;
+    font-style: italic;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(88px, 16vw, 220px);
+    line-height: 0.9;
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums;
+    color: var(--c);
+  }
+  .where {
+    margin: 18px 0 0;
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(16px, 1.5vw, 19px);
+  }
+  .where span {
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--film-dim);
+  }
+
+  .light {
+    width: min(560px, 100%);
+    margin-top: clamp(40px, 7vh, 72px);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--film-dim);
+  }
+  .light i {
+    grid-column: 1 / -1;
+    height: 6px;
+  }
+  .light span {
+    text-align: left;
+  }
+  .light span:last-child {
+    text-align: right;
+  }
+
+  .back {
+    margin-top: clamp(48px, 8vh, 80px);
+    padding: 12px 20px;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    font-family: var(--serif);
+    font-size: 15px;
+    text-decoration: none;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .back .en {
+    margin-left: 6px;
+    font-family: var(--serif-display);
+    font-style: italic;
+    color: var(--film-dim);
+  }
+  .back:hover,
+  .back:focus-visible {
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 10%, transparent);
+  }
+  .back:focus-visible {
+    outline: 2px solid var(--c);
+    outline-offset: 3px;
+  }
+
+  .credits {
+    display: grid;
+    gap: 6px;
+    margin-top: clamp(64px, 10vh, 112px);
+  }
+</style>

@@ -1,0 +1,471 @@
+---
+// 첫 화면 — 매거진 단신의 여는 면: 큰 지명, 표지 사진(목록 표지에서 커지는 전환의 도착점), 스탠드퍼스트, 하루의 호, 숫자
+import { SITE } from '../../lib/site';
+import { formatLngLat, type Trip } from '../../lib/trip';
+import { dateParts, isoAt, sunArc, type Moment, type coverOf, type facts } from '../lib';
+
+interface Props {
+  trip: Trip;
+  moments: Moment[];
+  cover: ReturnType<typeof coverOf>;
+  facts: ReturnType<typeof facts>;
+}
+const { trip, moments, cover, facts: f } = Astro.props;
+const t = trip.data;
+const day = cover?.day ?? trip.days[0];
+const when = dateParts(t.start);
+const arc = sunArc(moments);
+const tone = day.data.tone;
+const coverAngle = cover ? [...cover.photo.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360 : 0;
+---
+
+<header class="open" style={`--tone:${tone.accent};--len:${[...t.title].length}`}>
+  <div class="meta">
+    <a class="eyebrow home" href="/"><span aria-hidden="true">←</span> {SITE.title}</a>
+    <span class="eyebrow">
+      <span class="tone">Day Trip — {t.country}</span><span class="sep" aria-hidden="true"> · </span><time
+        datetime={when.ymd.replaceAll('.', '-')}>{when.ymd} {when.weekday}</time
+      >
+    </span>
+    <span class="eyebrow coords">{formatLngLat(t.base)}</span>
+  </div>
+
+  <h1 class="title">
+    <span class="title-word" aria-hidden="true">{[...t.title].map((ch, i) => <span style={`--i:${i}`}>{ch}</span>)}</span>
+    <span class="dt-sr">{t.title} — {t.subtitleKo}</span>
+  </h1>
+
+  <div class="grid">
+    <figure class="cover">
+      {/* 목록의 표지(TripBrief)가 이 사진으로 커진다 — Base.astro 전환 스크립트가 [data-vt-hero]를 찾는다 */}
+      <div class="frame" id="trip-hero" data-vt-hero>
+        {
+          cover?.photo.exists ? (
+            /* 표지도 크게 볼 수 있다 — 타임라인 사진과 한 갤러리 (scripts/lightbox.ts). 칸에 맞춰 잘려 있으므로 data-cropped */
+            <a
+              class="dt-lb zoom"
+              href={cover.photo.src}
+              data-pswp-width={cover.photo.w}
+              data-pswp-height={cover.photo.h}
+              data-cropped="true"
+              data-caption={cover.photo.caption ?? cover.photo.alt}
+              data-time={cover.time}
+            >
+              <img
+                src={cover.photo.display}
+                srcset={`${cover.photo.display} 1200w, ${cover.photo.src} ${cover.photo.w}w`}
+                sizes="(min-width: 900px) 64vw, 100vw"
+                alt={cover.photo.alt}
+                width={cover.photo.w}
+                height={cover.photo.h}
+                loading="eager"
+                fetchpriority="high"
+                decoding="async"
+              />
+              <span class="dt-sr">표지 사진 크게 보기</span>
+            </a>
+          ) : (
+            <div
+              class="ph"
+              role="img"
+              aria-label={cover?.photo.alt ?? t.subtitleKo}
+              style={`--a:${coverAngle}deg;--from:${tone.from};--to:${tone.to}`}
+            />
+          )
+        }
+      </div>
+      {
+        cover && (
+          <figcaption>
+            {cover.min != null && <time datetime={isoAt(trip, cover.min)}>{cover.time}</time>}
+            {cover.at && <span class="at">{cover.at.stop.name}</span>}
+            <span class="alt">{cover.photo.caption ?? cover.photo.alt}</span>
+          </figcaption>
+        )
+      }
+    </figure>
+
+    <div class="text">
+      <p class="kicker" lang="en">{t.subtitle}</p>
+      <p class="ko">{t.subtitleKo}</p>
+      <p class="lede">{day.data.lede}</p>
+
+      {/* 하루의 호 — 05시에 떠서 21시에 지는 해의 길 위에, 그날 머문 시간을 빛의 색으로 */}
+      <figure class="arc">
+        <svg viewBox={`0 0 ${arc.w} ${arc.h}`} role="img" aria-label={`${f.start}부터 ${f.end}까지, ${f.span}`}>
+          <path class="arc-full" d={arc.full} />
+          <line class="arc-horizon" x1="0" x2={arc.w} y1={arc.base} y2={arc.base} />
+          {arc.hours.map((hr) => (
+            <g class="arc-hour">
+              <line x1={hr.x} x2={hr.x} y1={arc.base} y2={arc.base + 5} />
+              <text x={hr.x} y={arc.base + 17}>{hr.label}</text>
+            </g>
+          ))}
+          <g class="arc-day">
+            {arc.segs.map((s) => (
+              <path d={s.d} stroke={s.c} />
+            ))}
+            {arc.dots.map((d) => (
+              <circle cx={d.xy[0].toFixed(1)} cy={d.xy[1].toFixed(1)} r="3.2" fill={d.c} />
+            ))}
+          </g>
+          <text class="arc-t" x={arc.start.xy[0] - 8} y={arc.start.xy[1] - 10} text-anchor="end">{arc.start.t}</text>
+          <text class="arc-t" x={arc.end.xy[0] + 8} y={arc.end.xy[1] - 10}>{arc.end.t}</text>
+        </svg>
+      </figure>
+
+      <dl class="facts">
+        <div><dt>Hours</dt><dd>{f.span}</dd></div>
+        <div><dt>Stops</dt><dd>{f.stops}</dd></div>
+        <div><dt>Distance</dt><dd>~{f.km.toLocaleString('en-US')} km</dd></div>
+        <div><dt>Photos</dt><dd>{f.photos}</dd></div>
+      </dl>
+
+      <a class="eyebrow cue" href="#day">The day <span aria-hidden="true">↓</span></a>
+    </div>
+  </div>
+</header>
+
+<style>
+  .open {
+    /* 지명 글자 수에 맞춰 한 줄에 들어가는 크기 (CHEORWON 8자 ≈ 14.5vw) */
+    --title: clamp(40px, calc(116vw / max(var(--len), 6)), 212px);
+    position: relative;
+    z-index: 1;
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 100svh;
+    padding: clamp(18px, 3vh, 32px) var(--gutter) clamp(40px, 7vh, 88px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px 20px;
+    flex-wrap: wrap;
+  }
+  .meta .tone {
+    color: var(--tone);
+  }
+  .home {
+    text-decoration: none;
+    color: var(--film);
+    transition: color 0.3s;
+  }
+  .home:hover,
+  .home:focus-visible {
+    color: var(--tone);
+  }
+  .home:focus-visible,
+  .cue:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 4px;
+  }
+
+  /* ---------- 큰 지명 ---------- */
+  .title {
+    position: relative;
+    z-index: 2;
+    margin: 0.16em 0 0;
+    font-family: var(--serif-display);
+    font-weight: 900;
+    font-variation-settings: 'opsz' 144;
+    font-size: var(--title);
+    line-height: 0.8;
+    letter-spacing: -0.035em;
+    text-shadow: 0 6px 40px rgb(0 0 0 / 0.35);
+    pointer-events: none;
+  }
+  .title-word {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .title-word span {
+    display: inline-block;
+  }
+
+  /* ---------- 표지 + 글 ---------- */
+  .grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    gap: clamp(28px, 4vw, 64px);
+    align-items: end;
+    /* 지명의 아랫단이 사진 위에 살짝 얹힌다 */
+    margin-top: calc(var(--title) * -0.13);
+  }
+  .cover {
+    margin: 0;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .frame {
+    position: relative;
+    flex: 1;
+    min-height: clamp(320px, 56svh, 640px);
+    overflow: hidden;
+    background: var(--ink-2);
+  }
+  .frame img,
+  .frame .ph,
+  .zoom {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* 사진 색 보정 (DayTripPage.astro --dt-grade) */
+  .frame img {
+    filter: var(--dt-grade, none);
+  }
+  .zoom {
+    display: block;
+    cursor: zoom-in;
+  }
+  .zoom:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: -4px;
+  }
+  .ph {
+    background:
+      radial-gradient(120% 90% at 20% 110%, rgb(0 0 0 / 0.55), transparent 60%),
+      linear-gradient(var(--a), var(--from), var(--to));
+  }
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--film-dim);
+  }
+  figcaption time {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--film);
+  }
+  figcaption .at {
+    font-family: var(--serif);
+    font-weight: 600;
+    color: var(--film);
+  }
+  figcaption .at::after {
+    content: '—';
+    margin-left: 10px;
+    color: var(--film-dim);
+    font-weight: 400;
+  }
+
+  .text {
+    /* 글 칸이 길어져도 지명 아래에서 시작 (사진만 지명 밑으로 파고든다) */
+    padding-top: calc(var(--title) * 0.2);
+    padding-bottom: 4px;
+  }
+  .kicker {
+    margin: 0;
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(19px, 1.7vw, 24px);
+    color: #d9d3c8;
+  }
+  .ko {
+    margin: 4px 0 0;
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(26px, 2.4vw, 36px);
+    line-height: 1.25;
+  }
+  .lede {
+    margin: 18px 0 0;
+    padding-top: 18px;
+    border-top: 1px solid rgb(255 255 255 / 0.14);
+    font-family: var(--serif);
+    font-size: clamp(15px, 1.15vw, 17px);
+    line-height: 1.85;
+    color: #d8d2c7;
+  }
+
+  .arc {
+    margin: 22px 0 0;
+    max-width: 340px;
+  }
+  .arc svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .arc-full {
+    fill: none;
+    stroke: rgb(255 255 255 / 0.22);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+  }
+  .arc-horizon,
+  .arc-hour line {
+    stroke: rgb(255 255 255 / 0.28);
+    stroke-width: 1;
+  }
+  .arc-hour text,
+  .arc-t {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    fill: var(--film-dim);
+    text-anchor: middle;
+  }
+  .arc-t {
+    font-size: 11px;
+    fill: var(--film);
+    text-anchor: start;
+  }
+  .arc-t[text-anchor='end'] {
+    text-anchor: end;
+  }
+  .arc-day path {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+  .arc-day circle {
+    stroke: var(--ink);
+    stroke-width: 1.5;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px clamp(18px, 2vw, 28px);
+    margin: 18px 0 0;
+  }
+  .facts div {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .facts dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--film-dim);
+  }
+  .facts dd {
+    margin: 0;
+    font-family: var(--serif-display);
+    font-weight: 300;
+    font-size: clamp(22px, 2vw, 30px);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .cue {
+    display: inline-block;
+    margin-top: 26px;
+    text-decoration: none;
+    color: var(--film);
+  }
+  .cue:hover span,
+  .cue:focus-visible span {
+    color: var(--tone);
+  }
+  .cue span {
+    display: inline-block;
+  }
+
+  /* ---------- 입장 연출 (목록 표지에서 커져 들어오면 생략 — Base.astro의 vt-from-list) ---------- */
+  /* 표지가 커지는 동안에도 지명이 사진 위에 있도록 따로 이름을 준다 (전환 그룹은 그리는 순서대로 쌓인다) */
+  :global(html.vt-from-list) .title {
+    view-transition-name: dt-title;
+  }
+  :global(html:not(.vt-from-list)) .frame {
+    animation: develop 1.8s 0.15s var(--ease-out) both;
+  }
+  :global(html:not(.vt-from-list)) .frame img {
+    animation: settle 2.4s 0.15s var(--ease-out) both;
+  }
+  :global(html:not(.vt-from-list)) .title-word span {
+    animation: rise 1.2s calc(0.35s + var(--i) * 0.06s) var(--ease-out) both;
+  }
+  :global(html:not(.vt-from-list)) .meta,
+  :global(html:not(.vt-from-list)) .text > *,
+  :global(html:not(.vt-from-list)) figcaption {
+    animation: fade 1.1s 1s var(--ease-out) both;
+  }
+  :global(html:not(.vt-from-list)) .arc svg {
+    animation: sweep 1.6s 1.3s var(--ease-out) both;
+  }
+  @keyframes develop {
+    from { clip-path: inset(100% 0 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  /* 끝 값 = 사진 색 보정(--dt-grade: saturate sepia)과 같은 모양 — 함수 목록이 같아야 부드럽게 이어진다 */
+  @keyframes settle {
+    from { transform: scale(1.12); filter: brightness(0.45) saturate(0.4) sepia(0.08); }
+    to { transform: none; filter: brightness(1) var(--dt-grade, saturate(1) sepia(0)); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(0.25em); filter: blur(10px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sweep {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+
+  /* ---------- 좁은 화면 ---------- */
+  @media (max-width: 899px) {
+    .open {
+      min-height: 0;
+      padding-bottom: 56px;
+    }
+    .meta .coords {
+      display: none;
+    }
+    .meta .tone,
+    .meta .sep {
+      display: none;
+    }
+    /* 캡션: 시각·장소 한 줄, 설명은 다음 줄 */
+    figcaption .at::after {
+      content: none;
+    }
+    figcaption .alt {
+      flex-basis: 100%;
+    }
+    .grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 28px;
+      margin-top: calc(var(--title) * -0.1);
+    }
+    .text {
+      padding-top: 0;
+    }
+    .cover {
+      /* 사진은 화면 끝까지 */
+      margin-inline: calc(-1 * var(--gutter));
+    }
+    .frame {
+      flex: none;
+      min-height: 0;
+      aspect-ratio: 5 / 4;
+    }
+    figcaption {
+      padding-inline: var(--gutter);
+    }
+    .arc {
+      max-width: 300px;
+    }
+  }
+</style>

@@ -1,0 +1,179 @@
+---
+// 단신 여행(국내 당일 등, isFeature가 false) 한 편 — "하루의 빛". 설계·구성은 src/daytrip/CLAUDE.md
+// 라우트는 src/pages/trips/[slug]/index.astro. 여행마다 다른 문구·값은 trip.yaml / dayXX.md에서만 온다
+import Base from '../layouts/Base.astro';
+import { ogImage, type Trip } from '../lib/trip';
+import { coverOf, detailLeg, facts, moments, numbered, routeLines } from './lib';
+import { skyAt, sunAt } from './sky';
+import Opener from './components/Opener.astro';
+import RouteMap from './components/RouteMap.astro';
+import DayClock from './components/DayClock.astro';
+import MomentItem from './components/Moment.astro';
+import Diary from './components/Diary.astro';
+import Coda from './components/Coda.astro';
+
+interface Props {
+  trip: Trip;
+}
+const { trip } = Astro.props;
+const t = trip.data;
+const list = moments(trip);
+const cover = coverOf(trip, list);
+const f = facts(trip, list, cover?.photo.src);
+const lines = routeLines(trip, list);
+const tone = trip.days[0].data.tone;
+const total = numbered(list).length;
+
+// 첫 화면의 하늘 = 첫 장소 시각의 빛
+const sky = skyAt(list[0].min);
+const sun = sunAt(list[0].min);
+
+// 지도 스크립트에 넘길 최소 데이터 (scripts/route-map.ts MapData)
+const detail = detailLeg(lines, list);
+const mapData = {
+  parts: lines.flatMap((l) => l.parts.map(({ coords, from, to, dashed, link, stops, color }) => ({ coords, from, to, dashed, link, stops, color }))),
+  // k = 지도 점 id(겹치지 않게 순서), n = 번호(끝줄은 0 — 번호 없이 속 빈 점)
+  stops: list.map((m, k) => ({
+    k: k + 1,
+    id: m.stop.id,
+    n: m.n,
+    name: m.stop.name,
+    time: m.time,
+    color: m.color,
+    coords: m.stop.coords,
+    // 장소 비추기는 15까지만 — 더 들어가면 사진 점을 이은 선이 거칠게 드러나고 주변(강·길)이 안 보인다
+    zoom: Math.min(15, Math.max(13, m.stop.camera.zoom)),
+  })),
+  detail: detail && { bounds: detail.bounds, from: detail.from, to: detail.to, ns: detail.ns },
+};
+---
+
+<Base
+  title={`${t.title} — ${t.subtitle}`}
+  description={t.description}
+  image={cover && { src: ogImage(trip.slug), alt: cover.photo.alt }}
+>
+  <!-- 목록의 표지가 첫 화면 사진으로 커지도록, 사진이 파싱된 뒤 첫 렌더 (Base.astro 전환 스크립트) -->
+  <link slot="head" rel="expect" href="#trip-hero" blocking="render" />
+
+  <div class="dt-sky" aria-hidden="true" style={`--sky-bg:${sky.bg};--sky-c:${sky.accent};--sun-x:${sun.x}%;--sun-y:${sun.y}%`}></div>
+
+  <!-- .dt-page = 사진 크게 보기 갤러리 하나 (표지 + 타임라인, scripts/lightbox.ts) -->
+  <div class="dt-page">
+  <Opener trip={trip} moments={list} cover={cover} facts={f} />
+
+  <main id="day" class="dt-main">
+    <RouteMap trip={trip} moments={list} lines={lines} detail={detail} />
+
+    <section class="dt-day" aria-labelledby="dt-day-title">
+      <h2 id="dt-day-title" class="dt-sr">{t.subtitleKo} — 시간순 기록</h2>
+      <DayClock moments={list} />
+      <ol class="dt-timeline">
+        {list.map((m, i) => <MomentItem trip={trip} moment={m} next={list[i + 1]} total={total} tone={tone} />)}
+      </ol>
+    </section>
+
+    {trip.days.map((d) => <Diary trip={trip} day={d} moments={list} photos={f.photos} />)}
+  </main>
+
+  <Coda trip={trip} moments={list} />
+  </div>
+
+  <script type="application/json" id="daytrip-map" set:html={JSON.stringify(mapData)} />
+</Base>
+
+<script>
+  import './scripts/daytrip';
+  import './scripts/lightbox';
+</script>
+
+<style is:global>
+  /* 당일 여행 페이지 공용 — 이름은 dt- 로 시작 (다른 페이지와 겹치지 않게) */
+  .dt-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* 하늘 — 스크롤 위치의 시각에 따라 색과 해의 자리가 바뀐다 (scripts/daytrip.ts) */
+  .dt-sky {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(70vmax 60vmax at var(--sun-x) var(--sun-y), color-mix(in srgb, var(--sky-c) 17%, transparent), transparent 70%),
+      linear-gradient(to bottom, color-mix(in srgb, var(--sky-bg) 70%, #000), var(--sky-bg));
+  }
+
+  /* 사진 색 — 휴대폰 사진의 쨍한 파랑·초록을 조금 누르고 따뜻하게. 어두운 필름 톤 페이지·주황 각인·종이와 같은 온도로
+     (본문 사진 Shot.astro, 표지 Opener.astro — 표지의 입장 연출 settle 끝 값도 이것과 같은 함수 목록) */
+  .dt-page {
+    --dt-grade: saturate(0.88) sepia(0.08);
+  }
+
+  .dt-main {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 목록 표지에서 들어올 때 지명(Opener.astro, view-transition-name: dt-title)은 목록 화면이 거의 사라진 뒤에 나타난다 —
+     전환 첫 순간 목록의 피처 제목 위에 새 지명이 겹쳐 글자가 부딪치지 않게 (목록 → 페이지 루트 교차 0.7s, 표지 1.1s) */
+  ::view-transition-new(dt-title) {
+    animation-duration: 0.5s;
+    animation-delay: 0.4s;
+    animation-fill-mode: both;
+  }
+
+  /* 사진 크게 보기 캡션 — 촬영 시각은 필름 각인 색 (공용 .pswp__caption 위치를 그대로 쓴다) */
+  .dt-lb-caption {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 12px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    line-height: 1.5;
+  }
+  .dt-lb-caption time {
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: #ffae57;
+  }
+  .dt-day {
+    position: relative;
+  }
+  .dt-timeline {
+    list-style: none;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: clamp(48px, 9vh, 96px) var(--gutter) clamp(24px, 4vh, 48px);
+  }
+
+  /* 스크롤 진입 시 떠오르기 — JS가 켜졌을 때만 숨겨 둔다 */
+  .dt-js .dt-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 1s var(--ease-out),
+      transform 1s var(--ease-out);
+  }
+  .dt-js .dt-reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dt-js .dt-reveal {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

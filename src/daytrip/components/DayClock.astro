@@ -1,0 +1,290 @@
+---
+// 스크롤 시계 — 타임라인 위에 붙어 다니는 하루 띠. 스크롤 위치의 시각이 분 단위로 흐르고, 해 점이 띠 위를 지난다
+// (움직임은 scripts/daytrip.ts). 눈금 = 장소, 누르면 그 장소로
+import { skyAt } from '../sky';
+import type { Moment } from '../lib';
+
+interface Props {
+  moments: Moment[];
+}
+const { moments } = Astro.props;
+const first = moments[0];
+const last = moments.at(-1)!;
+// 띠의 범위: 첫 장소 조금 전 정시 ~ 마지막 장소 조금 뒤 정시
+const from = Math.floor((first.min - 20) / 60) * 60;
+const to = Math.ceil((last.min + 20) / 60) * 60;
+const frac = (min: number) => (min - from) / (to - from);
+const pct = (min: number) => `${(frac(min) * 100).toFixed(2)}%`;
+const hours = Array.from({ length: (to - from) / 60 + 1 }, (_, i) => from + i * 60);
+const every = hours.length > 12 ? 3 : 2;
+// 띠의 색 — 30분마다 그 시각의 빛
+const band = Array.from({ length: (to - from) / 30 + 1 }, (_, i) => from + i * 30)
+  .map((m) => `${skyAt(m).accent} ${pct(m)}`)
+  .join(', ');
+const label = (min: number) => `${String(Math.floor((min % 1440) / 60)).padStart(2, '0')}`;
+---
+
+<nav class="clock dt-clock" aria-label="하루의 시간표" data-from={from} data-to={to} style={`--c:${first.color};--xf:${frac(first.min).toFixed(4)}`}>
+  <div class="in">
+    <p class="now" aria-hidden="true">
+      <span class="now-time">{first.time}</span>
+      {/* 장소 이름 — 여백(이동 중)에는 "A → B": 앞 장소(흐리게)가 먼저 줄어든다 (scripts/daytrip.ts가 바꾼다) */}
+      <span class="now-place"><span class="to">{first.stop.name}</span></span>
+    </p>
+    <div class="track">
+      <span class="band" style={`background:linear-gradient(90deg, ${band})`}></span>
+      {/* 실제로 돌아다닌 시간만 밝게 — 같은 띠를 첫 장소~마지막 장소로 가린다 */}
+      <span class="band lit" style={`background:linear-gradient(90deg, ${band});--a:${pct(first.min)};--b:${pct(last.min)}`}></span>
+      <ol class="hours" aria-hidden="true">
+        {hours.map((h, i) => <li style={`--x:${pct(h)}`} class:list={{ labeled: i % every === 0 }}><span>{label(h)}</span></li>)}
+      </ol>
+      <ol class="ticks">
+        {
+          moments.map((m) => (
+            <li style={`--x:${pct(m.min)};--c:${m.color}`}>
+              <a href={`#${m.key}`} data-key={m.key} data-label={`${m.time} ${m.stop.name}`}>
+                <span class="dt-sr">{`${m.time} ${m.stop.name}`}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+      <span class="sun" aria-hidden="true"></span>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .clock {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--ink) 80%, transparent);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  }
+  /* 막대 밑으로 지나가는 글줄이 칼로 자른 듯 끊겨 보이지 않게 — 아래로 짧은 그늘 */
+  .clock::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 18px;
+    background: linear-gradient(rgb(0 0 0 / 0.32), transparent);
+    pointer-events: none;
+  }
+  .in {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 10px var(--gutter) 12px;
+    display: grid;
+    /* 이름 칸 — 이동 중 "A → B"가 들어가게 넉넉히 (띠는 남는 폭 전부) */
+    grid-template-columns: minmax(220px, 420px) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(20px, 3vw, 48px);
+  }
+
+  .now {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    min-width: 0;
+  }
+  .now-time {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: var(--c);
+    transition: color 0.6s;
+  }
+  .now-place {
+    display: flex;
+    gap: 0.45em;
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .now-place :global(.from),
+  .now-place :global(.to) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* 지나온 장소는 흐리게, 칸이 모자라면 이쪽이 먼저 줄어든다 */
+  .now-place :global(.from) {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-weight: 400;
+    color: var(--film-dim);
+  }
+  .now-place :global(.to) {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  /* ---------- 하루 띠 ---------- */
+  .track {
+    position: relative;
+    height: 34px;
+    /* 해 점이 띠 폭의 비율(--xf)만큼 transform으로 움직이도록 — 100cqw = 띠 폭 */
+    container-type: inline-size;
+  }
+  .band {
+    position: absolute;
+    top: 12px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0.25;
+  }
+  .band.lit {
+    opacity: 1;
+    -webkit-mask: linear-gradient(90deg, transparent var(--a), #000 var(--a), #000 var(--b), transparent var(--b));
+    mask: linear-gradient(90deg, transparent var(--a), #000 var(--a), #000 var(--b), transparent var(--b));
+  }
+  .hours,
+  .ticks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .hours li {
+    position: absolute;
+    left: var(--x);
+    top: 16px;
+    width: 1px;
+    height: 4px;
+    background: rgb(255 255 255 / 0.25);
+  }
+  .hours li span {
+    display: none;
+  }
+  .hours li.labeled span {
+    display: block;
+    position: absolute;
+    top: 5px;
+    left: 0;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--film-dim);
+  }
+
+  /* 장소 눈금 — 얇은 선, 누를 수 있는 폭은 넉넉하게 */
+  .ticks li {
+    position: absolute;
+    left: var(--x);
+    top: 0;
+  }
+  .ticks a {
+    position: absolute;
+    left: -8px;
+    top: 0;
+    width: 16px;
+    height: 24px;
+    display: block;
+  }
+  .ticks a::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 5px;
+    width: 2px;
+    height: 16px;
+    background: var(--c);
+    opacity: 0.75;
+    transition: transform 0.3s var(--ease-out), opacity 0.3s;
+    transform-origin: 50% 100%;
+  }
+  .ticks a[aria-current]::before {
+    opacity: 1;
+    transform: scaleY(1.35);
+  }
+  /* 이름표 — 마우스를 올리거나 키보드로 오면 */
+  .ticks a::after {
+    content: attr(data-label);
+    position: absolute;
+    left: 50%;
+    top: 30px;
+    transform: translate(-50%, -4px);
+    padding: 4px 8px;
+    background: rgb(11 11 13 / 0.92);
+    border: 1px solid rgb(255 255 255 / 0.12);
+    font-family: var(--serif);
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--film);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .ticks a:hover::after,
+  .ticks a:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  .ticks a:focus-visible {
+    outline: 2px solid var(--c);
+    outline-offset: 2px;
+  }
+  .ticks li:first-child a::after { left: 0; transform: translate(-8px, -4px); }
+  .ticks li:first-child a:hover::after,
+  .ticks li:first-child a:focus-visible::after { transform: translate(-8px, 0); }
+  .ticks li:last-child a::after { left: auto; right: 0; transform: translate(8px, -4px); }
+  .ticks li:last-child a:hover::after,
+  .ticks li:last-child a:focus-visible::after { transform: translate(8px, 0); }
+
+  /* 해 — 지금 스크롤 위치의 시각. left가 아니라 transform으로 옮긴다 (레이아웃 이동 없음) */
+  .sun {
+    position: absolute;
+    left: 0;
+    transform: translateX(calc(var(--xf, 0) * 100cqw));
+    top: 13px;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: var(--c);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent),
+      0 0 18px 4px color-mix(in srgb, var(--c) 55%, transparent);
+    pointer-events: none;
+    transition: background 0.6s;
+  }
+
+  @media (max-width: 719px) {
+    .in {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+      padding-top: 8px;
+      padding-bottom: 4px;
+    }
+    .now-time {
+      font-size: 18px;
+    }
+    .now-place {
+      font-size: 14px;
+    }
+    .track {
+      height: 26px;
+    }
+    /* 손가락으로 누르기엔 눈금이 너무 촘촘하다 — 좁은 화면에서는 보여 주기만 (장소 이동은 본문·지도 범례) */
+    .ticks a {
+      pointer-events: none;
+    }
+    .ticks a::after {
+      display: none;
+    }
+    .hours li.labeled span {
+      font-size: 8px;
+    }
+  }
+</style>

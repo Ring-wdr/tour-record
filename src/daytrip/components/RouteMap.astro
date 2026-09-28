@@ -1,0 +1,521 @@
+---
+// 지도 한 장 — 하루 경로 전체를 시각의 빛으로 칠한 선 + 번호 범례(누르면 그 장소로).
+// 사진이 없는 긴 구간은 점선(다른 구간을 가로지르면 휜다), 사진 점 선이 엇갈리는 촘촘한 구간은 장소끼리 이은 가는 선(link).
+// 전체 경로에 비해 아주 촘촘한 구간(detail)은 지도 모서리에 확대 칸으로.
+// MapLibre는 칸이 화면에 가까워질 때 불러온다(scripts/daytrip.ts → route-map.ts). 그전·실패 시에는 같은 경로의 SVG
+// 번호 = 번호 붙은 장소(lib.ts numbered). 하루를 여닫는 끝줄(bookend)은 번호 없이 속 빈 점, 범례에는 없다
+import type { Trip } from '../../lib/trip';
+import { colorAt, numbered, scriptRuns, type Leg, type Moment, type RouteLine } from '../lib';
+
+interface Props {
+  trip: Trip;
+  moments: Moment[];
+  lines: RouteLine[];
+  /** 확대 칸으로 따로 보일 촘촘한 구간 (lib.ts detailLeg) */
+  detail?: Leg;
+}
+const { trip, moments, lines, detail } = Astro.props;
+const first = moments[0];
+const last = moments.at(-1)!;
+const places = numbered(moments);
+const tone = trip.days[0].data.tone;
+const km = trip.days.reduce((n, d) => n + d.data.driveKm, 0);
+const tracked = trip.days.some((d) => (trip.tracks[d.data.day]?.length ?? 0) > 1);
+const dashed = lines.some((l) => l.parts.some((p) => p.dashed));
+const linked = lines.some((l) => l.parts.some((p) => p.link));
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// 경로 모양에 맞춘 지도 칸 비율 — 남북으로 긴 길은 세로 칸, 동서로 긴 길은 가로 칸
+type P = [number, number];
+const pts: P[] = [...lines.flatMap((l) => l.coords), ...moments.map((m) => m.stop.coords)];
+const lat0 = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+const kx = Math.cos((lat0 * Math.PI) / 180);
+const xs = pts.map((p) => p[0] * kx);
+const ys = pts.map((p) => -p[1]);
+const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+const aspect = (maxX - minX || 1e-6) / (maxY - minY || 1e-6);
+// 확대 칸이 있으면 세로로 긴 길도 정사각 칸 — 경로 띠 옆에 확대 칸이 넉넉히 들어가게
+const shape = aspect > 1.4 ? 'landscape' : aspect < 0.8 && !detail ? 'portrait' : 'square';
+const boxRatio = { portrait: 4 / 5, landscape: 16 / 10, square: 1 }[shape];
+
+// 대체 SVG — 지도가 뜨기 전(또는 WebGL이 없을 때)의 같은 경로
+const W = 1000;
+const H = Math.round(W / boxRatio);
+const PAD = W * 0.1;
+const scale = Math.min((W - PAD * 2) / (maxX - minX || 1e-6), (H - PAD * 2) / (maxY - minY || 1e-6));
+const ox = (W - (maxX - minX) * scale) / 2;
+const oy = (H - (maxY - minY) * scale) / 2;
+const proj = (p: P) => [ox + (p[0] * kx - minX) * scale, oy + (-p[1] - minY) * scale] as const;
+const seg = (a: P, b: P) => {
+  const [x1, y1] = proj(a);
+  const [x2, y2] = proj(b);
+  return `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`;
+};
+const segs = lines.flatMap((l) =>
+  l.parts.flatMap((part) => {
+    if (part.dashed) return [{ d: part.coords.slice(1).map((c, i) => seg(part.coords[i], c)).join(''), c: part.color, dashed: true, link: false }];
+    const cum = [0];
+    for (let i = 1; i < part.coords.length; i++) {
+      cum.push(cum[i - 1] + Math.hypot((part.coords[i][0] - part.coords[i - 1][0]) * kx, part.coords[i][1] - part.coords[i - 1][1]));
+    }
+    const total = cum.at(-1) || 1;
+    return part.coords.slice(1).map((c, i) => ({ d: seg(part.coords[i], c), c: colorAt(part.stops, (cum[i] + cum[i + 1]) / 2 / total), dashed: false, link: !!part.link }));
+  }),
+);
+const dots = moments.map((m) => ({ n: m.n, c: m.color, xy: proj(m.stop.coords) }));
+
+const label = `${trip.data.subtitleKo} 경로 지도 — ${places.length}곳, 약 ${km}km`;
+const gradient = moments.map((m, i) => `${m.color} ${((i / Math.max(1, moments.length - 1)) * 100).toFixed(1)}%`).join(', ');
+const detailName = detail && places.filter((m) => detail.ns.includes(m.n)).map((m) => m.stop.name).join(', ');
+---
+
+<section class:list={['route', shape]} aria-labelledby="dt-route-title" style={`--tone:${tone.accent}`}>
+  <div class="map-col">
+    <div class="map-box" style={`aspect-ratio:${boxRatio}`}>
+      <svg class="fallback" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
+        <g class="fb-route">
+          {segs.map((s) => <path d={s.d} stroke={s.c} class:list={{ dash: s.dashed, link: s.link }} />)}
+        </g>
+        <g class="fb-dots">
+          {
+            dots.map((d) =>
+              d.n ? (
+                <g transform={`translate(${d.xy[0].toFixed(1)} ${d.xy[1].toFixed(1)})`}>
+                  <circle r="13" fill={d.c} />
+                  <text dy="4.5">{d.n}</text>
+                </g>
+              ) : (
+                <circle class="fb-end" cx={d.xy[0].toFixed(1)} cy={d.xy[1].toFixed(1)} r="7" stroke={d.c} />
+              ),
+            )
+          }
+        </g>
+      </svg>
+      <div id="dt-map" class="map dt-map" role="region" aria-label={label}></div>
+      {
+        detail && (
+          <>
+            {/* 확대 칸과 본 지도의 그 자리를 잇는 선 (route-map.ts가 그린다) */}
+            <svg class="detail-lines" aria-hidden="true">
+              <rect class="detail-rect" />
+              <line class="detail-l1" />
+              <line class="detail-l2" />
+            </svg>
+            <div class="detail" data-map-detail>
+              <div class="detail-map"></div>
+              <button type="button" class="detail-hit" disabled aria-label={`${detail.from}–${detail.to} 구간(${detailName}) 지도에서 크게 보기`}>
+                <span class="detail-label" aria-hidden="true">
+                  {detail.from}–{detail.to} <span>확대</span>
+                </span>
+              </button>
+            </div>
+          </>
+        )
+      }
+    </div>
+    <p class="credit">Map © OpenStreetMap contributors · OpenFreeMap</p>
+  </div>
+
+  <div class="head">
+    <p class="eyebrow">The Route · ~{km.toLocaleString('en-US')} km</p>
+    <h2 id="dt-route-title">지도 위의 하루</h2>
+    <p class="how">
+      {tracked ? '사진을 찍은 자리를 시간순으로 이은 길.' : '장소를 순서대로 이은 선.'} 선의 색은 그 시각의 빛이다.
+      {dashed && ' 점선은 사진이 없어 지나간 길을 모르는 구간.'}
+      {linked && ' 장소가 촘촘히 모인 곳은 가는 선으로 장소 순서만 이었다.'}
+    </p>
+    <div class="key" aria-hidden="true">
+      <span>{first.time}</span>
+      <i style={`background:linear-gradient(90deg, ${gradient})`}></i>
+      <span>{last.time}</span>
+      {dashed && <b class="key-dash">사진 없는 구간</b>}
+      {linked && <b class="key-link">장소 순서</b>}
+    </div>
+  </div>
+
+  <div class="legend-col">
+    <ol class="legend">
+      {
+        places.map((m) => (
+          <li>
+            <button
+              type="button"
+              class="stop"
+              data-map-stop={m.stop.id}
+              aria-pressed="false"
+              aria-label={`${m.n}. ${m.time} ${m.stop.name} — 지도에서 보기`}
+              style={`--c:${m.color}`}
+            >
+              <span class="n">{pad2(m.n)}</span>
+              <span class="t">{m.time}</span>
+              <span class="nm">{scriptRuns(m.stop.name).map((r) => (r.latin ? <span class="lat">{r.t}</span> : r.t))}</span>
+            </button>
+          </li>
+        ))
+      }
+    </ol>
+    <button type="button" class="all" data-map-overview>
+      <span aria-hidden="true">↺</span> 전체 경로
+    </button>
+  </div>
+</section>
+
+<style>
+  .route {
+    position: relative;
+    z-index: 1;
+    max-width: 1440px;
+    margin: 0 auto;
+    /* 여는 면 ↔ 지도 ↔ 시계 막대 사이 — 장이 바뀌는 쉼은 두되 빈 띠로 보이지 않게 (리뷰: 150px대 → 2/3) */
+    padding: clamp(28px, 5vh, 64px) var(--gutter) clamp(44px, 8vh, 92px);
+    display: grid;
+    gap: clamp(28px, 4vw, 72px);
+  }
+  /* 세로·정사각 칸: 지도 왼쪽, 제목과 범례 오른쪽 / 가로 칸: 제목 → 지도 → 범례 */
+  .route.portrait,
+  .route.square {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: 'map head' 'map legend';
+    align-items: start;
+  }
+  .route.square {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 4fr);
+  }
+  .route.landscape {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'head' 'map' 'legend';
+  }
+  .map-col { grid-area: map; }
+  .head { grid-area: head; }
+  .legend-col { grid-area: legend; }
+
+  /* ---------- 지도 칸 ---------- */
+  .map-col {
+    min-width: 0;
+  }
+  .map-box {
+    position: relative;
+    width: 100%;
+    max-height: 86svh;
+    overflow: hidden;
+    background: #0e0e10;
+    border: 1px solid rgb(255 255 255 / 0.08);
+  }
+  .portrait .map-box {
+    /* 세로 칸이 화면보다 길어지지 않게 폭을 줄인다 */
+    width: min(100%, calc(86svh * 4 / 5));
+  }
+  .map {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  .fallback {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 1s;
+  }
+  :global(.dt-map-ready) .map {
+    opacity: 1;
+  }
+  :global(.dt-map-ready) .fallback {
+    opacity: 0;
+  }
+  .fb-route path {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+  }
+  .fb-route path.link {
+    stroke-width: 3;
+  }
+  .fb-route path.dash {
+    stroke-width: 3;
+    stroke-dasharray: 2 12;
+    opacity: 0.7;
+  }
+  .fb-dots g circle {
+    stroke: #0b0b0d;
+    stroke-width: 3;
+  }
+  .fb-dots .fb-end {
+    fill: #0b0b0d;
+    stroke-width: 3;
+  }
+  .fb-dots text {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    fill: #0b0b0d;
+    text-anchor: middle;
+  }
+  .credit {
+    margin: 8px 0 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--film-dim);
+  }
+
+  /* ---------- 확대 칸 (촘촘한 구간) — 자리·크기는 route-map.ts가 정한다 ---------- */
+  .detail {
+    position: absolute;
+    z-index: 2;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    background: #0e0e10;
+    border: 1px solid rgb(255 255 255 / 0.34);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.55);
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity 0.6s,
+      visibility 0s 0.6s;
+  }
+  :global(.dt-detail-on) .detail {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.6s;
+  }
+  .detail-map {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  /* 칸 안의 지도는 뜨면 서서히 (칸의 틀은 먼저 보인다 — route-map.ts) */
+  .detail.is-ready .detail-map {
+    opacity: 1;
+  }
+  .detail-hit {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--film);
+    cursor: zoom-in;
+  }
+  .detail-hit:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 2px;
+  }
+  .detail-label {
+    padding: 4px 8px 5px;
+    background: rgb(11 11 13 / 0.82);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+    color: var(--film);
+  }
+  .detail-label span {
+    margin-left: 4px;
+    color: var(--film-dim);
+  }
+  .detail-hit:hover .detail-label span {
+    color: var(--film);
+  }
+  .detail-lines {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s;
+  }
+  :global(.dt-detail-on) .detail-lines {
+    opacity: 1;
+  }
+  .detail-lines rect,
+  .detail-lines line {
+    fill: none;
+    stroke: rgb(255 255 255 / 0.5);
+    stroke-width: 1;
+  }
+  .detail-lines rect {
+    stroke-dasharray: 3 3;
+  }
+
+  /* ---------- 제목과 범례 ---------- */
+  .head,
+  .legend-col {
+    min-width: 0;
+  }
+  .eyebrow {
+    margin: 0;
+  }
+  h2 {
+    margin: 10px 0 0;
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: clamp(30px, 3.4vw, 48px);
+    line-height: 1.15;
+  }
+  .how {
+    margin: 14px 0 0;
+    font-family: var(--serif);
+    font-size: 15px;
+    color: #d8d2c7;
+  }
+  .key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin: 16px 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--film-dim);
+  }
+  .key i {
+    flex: 0 1 180px;
+    height: 3px;
+  }
+  .key-dash {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 14px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .key-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 14px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .key-link::before {
+    content: '';
+    width: 28px;
+    height: 1px;
+    background: var(--film-dim);
+  }
+  .key-dash::before {
+    content: '';
+    width: 28px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--film-dim) 0 3px, transparent 3px 8px);
+  }
+
+  .legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid rgb(255 255 255 / 0.1);
+  }
+  .landscape .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    column-gap: 28px;
+  }
+  .stop {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 30px 50px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 8px;
+    padding: 11px 4px 10px;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+    color: var(--film);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .stop:hover,
+  .stop[aria-pressed='true'] {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--c) 16%, transparent), transparent 80%);
+  }
+  .stop:focus-visible,
+  .all:focus-visible {
+    outline: 2px solid var(--c, var(--accent));
+    outline-offset: 2px;
+  }
+  .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--c);
+  }
+  .t {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--film-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .nm {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .nm .lat {
+    font-family: var(--serif-display);
+    font-weight: 500;
+    font-variation-settings: 'opsz' 144;
+  }
+  .all {
+    margin-top: 16px;
+    padding: 8px 14px;
+    background: none;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    color: var(--film);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+  }
+  .all:hover {
+    border-color: var(--film);
+  }
+
+  @media (max-width: 899px) {
+    .route.portrait,
+    .route.square {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      grid-template-areas: 'head' 'map' 'legend';
+    }
+    .portrait .map-box {
+      width: 100%;
+    }
+    .map-col {
+      margin-inline: calc(-1 * var(--gutter));
+      /* 범례를 누르는 동안 지도가 화면 위에 붙어 있다 — 범례 줄은 지도 밑으로 지나간다 */
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      align-self: start;
+    }
+    .map-box {
+      border-inline: 0;
+    }
+    /* 붙어 있는 동안에도 범례를 누를 자리가 남게 */
+    .map-box,
+    .portrait .map-box {
+      max-height: 62svh;
+    }
+    .credit {
+      margin: 0;
+      padding: 6px var(--gutter) 8px;
+      background: rgb(11 11 13 / 0.92);
+    }
+  }
+</style>

@@ -2,21 +2,30 @@
 // 메인: 여행 목록. 최근 여행부터
 import Base from '../layouts/Base.astro';
 import TripEntry from '../components/TripEntry.astro';
+import TripBrief from '../components/TripBrief.astro';
 import { SITE } from '../lib/site';
-import { getTrips, ogImage, tripStats } from '../lib/trip';
+import { getTrips, isFeature, ogImage, tripStats } from '../lib/trip';
 
 const trips = await getTrips();
-const latest = trips[0];
+const features = trips.filter(isFeature);
+const briefs = trips.filter((t) => !isFeature(t));
+// 첫 화면·링크 미리보기는 가장 최근의 큰 여행
+const latest = features[0] ?? trips[0];
 const latestCover = latest?.days.find((d) => d.data.day === latest.data.heroDay)?.data.cover;
 
 const all = trips.map((t) => tripStats(t.days));
 const summary = [
-  { value: trips.length, unit: 'journey' },
+  { value: features.length, unit: 'journey' },
+  { value: trips.length - features.length, unit: 'day trip' },
   { value: new Set(trips.map((t) => t.data.country)).size, unit: 'country' },
   { value: all.reduce((n, s) => n + s.days, 0), unit: 'day' },
   { value: all.reduce((n, s) => n + s.photos, 0), unit: 'photograph' },
-].map((s) => ({ ...s, unit: s.value === 1 ? s.unit : s.unit === 'country' ? 'countries' : `${s.unit}s` }));
+]
+  .filter((s) => s.value > 0)
+  .map((s) => ({ ...s, unit: s.value === 1 ? s.unit : s.unit === 'country' ? 'countries' : `${s.unit}s` }));
 const years = trips.map((t) => t.data.start.getUTCFullYear());
+// 피처(큰 여행)를 최근 순으로 먼저, 단신(당일 여행)은 그 뒤 "In Brief" 한 덩어리(역시 최근 순) —
+// 목록 맨 앞 자리는 늘 피처가 차지한다 (단신이 가장 최근이어도 위계가 뒤집히지 않게). 번호·좌우 번갈아는 피처끼리만 센다
 const span = years.length ? `${Math.min(...years)}${Math.max(...years) > Math.min(...years) ? ` — ${Math.max(...years)}` : ''}` : '';
 ---
 
@@ -67,7 +76,15 @@ const span = years.length ? `${Math.min(...years)}${Math.max(...years) > Math.mi
 
   <main id="journeys" class="journeys">
     <p class="eyebrow section-label">The Journeys</p>
-    {trips.map((trip, i) => <TripEntry trip={trip} index={i} />)}
+    {features.map((trip, i) => <TripEntry trip={trip} index={i} />)}
+    {
+      briefs.length > 0 && (
+        <section class="briefs" aria-label="Day trips">
+          <p class="eyebrow briefs-label">In Brief · Day Trips</p>
+          {briefs.map((trip) => <TripBrief trip={trip} />)}
+        </section>
+      )
+    }
   </main>
 
   <footer class="foot">
@@ -221,6 +238,27 @@ const span = years.length ? `${Math.min(...years)}${Math.max(...years) > Math.mi
     margin: 0 0 calc(-1 * clamp(60px, 12vh, 140px));
     padding-bottom: 12px;
     border-bottom: 1px solid #222;
+  }
+
+  .briefs {
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+    border-bottom: 1px solid #222;
+  }
+  .briefs-label {
+    margin: 0 0 14px;
+  }
+  /* 단신 묶음은 피처 사이의 큰 간격(표지용)보다 가깝게 — 마지막 피처 뒤에 딸린 난처럼. 목록 끝 여백도 같은 만큼 줄인다 */
+  .briefs {
+    margin-top: calc(-1 * clamp(40px, 8vh, 100px));
+  }
+  .briefs:last-child {
+    margin-bottom: calc(-1 * clamp(40px, 8vh, 100px));
+  }
+  /* 피처가 없으면 "The Journeys" 선 바로 아래에 붙인다 */
+  .section-label + .briefs {
+    margin-top: calc(-1 * clamp(24px, 4vh, 48px));
   }
 
   .foot {

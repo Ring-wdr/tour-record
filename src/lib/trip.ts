@@ -53,6 +53,12 @@ export async function getTrips(): Promise<Trip[]> {
   return result.sort((a, b) => b.data.start.getTime() - a.data.start.getTime());
 }
 
+/** 목록의 큰 피처인지 — trip.yaml feature가 있으면 그 값, 없으면 국내 당일 여행만 단신 */
+export function isFeature(trip: Trip) {
+  const t = trip.data;
+  return t.feature ?? !(t.country === 'Korea' && t.start.getTime() === t.end.getTime());
+}
+
 /** 여행 단위 규칙(src/schemas/check.ts)을 어기면 빌드(개발 서버)가 멈춘다 */
 export function checkTrip(trip: Trip) {
   const issues = tripIssues(

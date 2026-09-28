@@ -1,0 +1,19 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/cheorwon-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/day01.md  하루 = frontmatter(장소·좌표·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    이동 경로 — pnpm tracks가 생성
+# 국내 당일 여행 → 목록에서는 단신, 페이지는 src/daytrip/ (당일 여행 전용 레이아웃)
+title: CHEORWON
+subtitle: A Day in Cheorwon
+subtitleKo: 철원에서 보낸 하루
+description: 부모님과 한탄강 주상절리길을 걷고, 고석정과 꽃밭에서 오후를 보냈다. 철원 당일 나들이 기록 (2026.09.26).
+country: Korea
+start: 2026-09-26
+end: 2026-09-26
+# 공개 좌표 — 고석정 관광지(공개 관광지). 출발·귀가 지점은 사진에 없고 공개하지 않는다
+base: [127.289, 38.1865]
+heroDay: 1
+utcOffset: "+09:00"
+tracks:
+  bbox: [[127.2, 38.1], [127.4, 38.25]] # 철원 한탄강 일대 밖의 점은 버림

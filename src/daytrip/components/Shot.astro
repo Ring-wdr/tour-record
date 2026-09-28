@@ -1,0 +1,229 @@
+---
+// 사진 한 장 — 필름 카메라 날짜 각인처럼 촬영 시각이 박힌다. 크게 보기는 이 페이지 전용 PhotoSwipe(scripts/lightbox.ts)
+// 줄 맞춤: 부모(.plates·.bleed)가 flex-wrap이고, 사진마다 비율(--r)만큼 늘어나 한 줄의 높이가 같아진다
+// 편집(dayXX.md): size full = 페이지 폭 가득(Moment가 따로 모은다), small = 작게, crop = 잘라 보일 부분
+// 캡션: dayXX.md에 caption을 따로 적은 사진만 보인다 — alt(대체 텍스트)는 장소 노트와 겹치는 설명이라 화면에 되풀이하지 않는다
+// (크게 보기에서는 caption이 없으면 alt를 보여 준다)
+import type { Tone } from '../../lib/trip';
+import type { Shot } from '../lib';
+
+interface Props {
+  shot: Shot;
+  /** 사진 파일이 없을 때 플레이스홀더 색 */
+  tone: Tone;
+  /** 넓은 화면에서 이 사진이 한 줄(본사진 측정폭·전폭)에서 차지하는 몫(0~1) — srcset sizes 계산용 (Moment가 준다) */
+  share?: number;
+}
+const { shot, tone, share = 1 } = Astro.props;
+const angle = [...shot.src].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+// 잘라 보이기 — 원본 기준 [왼쪽, 위, 폭, 높이] %. img를 (100/폭)배로 키워 왼쪽·위로 민다 (칸 비율 = 잘라 낸 부분의 비율)
+const crop = shot.crop;
+const cropVars = crop ? `;--cx:${crop[0]};--cy:${crop[1]};--cw:${crop[2]};--ch:${crop[3]}` : '';
+// 전폭 사진은 좁은 화면에서 너무 납작하면 가운데를 높게 잘라 보인다(아래 CSS) — 크게 보기가 잘린 자리에서 커지도록 data-cropped
+const wide = shot.size === 'full' && !crop;
+// 세로로 긴 본사진(4:5보다 좁은) — 좁은 화면에서 한 줄에 혼자 남으면 폭의 절반만 쓰고 옆이 빈다 → 글 열 폭 가득, 4:5로 가운데를 잘라 보인다
+const tall = !shot.size && !crop && shot.ratio < 0.8;
+
+// 본문 사진은 1200px WebP만 쓴다(2400px JPEG는 장당 0.4~1MB — 크게 보기용). 다만 잘라서 확대해 보이거나(crop) 세로로 긴 사진은
+// WebP가 칸보다 작아 흐려지므로 2400px 사본도 후보로 — 브라우저가 sizes(칸 폭 × 확대 배율)와 화면 밀도로 고른다.
+// 칸 폭은 Moment의 레이아웃 값: 글 열 1063px(1440 이상)·약 73vw, 작은 사진 260px·19vw, 전폭 1440px·100vw, 좁은 화면 글 열 100vw − 68px
+const zoom = crop ? 100 / crop[2] : 1;
+const mdW = Math.round(shot.w * Math.min(1, 1200 / Math.max(shot.w, shot.h)));
+const big = shot.exists && (zoom > 1.05 || mdW < 1000);
+const k = (v: number) => v.toFixed(3);
+const sizes = !big
+  ? undefined
+  : shot.size === 'small'
+    ? `(max-width: 719px) calc((100vw - 68px) * ${k(0.64 * zoom)}), (min-width: 1368px) calc(260px * ${k(zoom)}), calc(19vw * ${k(zoom)})`
+    : shot.size === 'full'
+      ? `(max-width: 719px) calc(100vw * ${k(zoom)}), (min-width: 1440px) calc(1440px * ${k(share * zoom)}), calc(100vw * ${k(share * zoom)})`
+      : `(max-width: 719px) calc((100vw - 68px) * ${k(zoom)}), (min-width: 1440px) calc(1063px * ${k(share * zoom)}), calc(73vw * ${k(share * zoom)})`;
+const srcset = big ? `${shot.display} ${mdW}w, ${shot.src} ${shot.w}w` : undefined;
+---
+
+<figure
+  class:list={['shot', 'dt-shot', shot.size && `is-${shot.size}`, { 'is-tall': tall }]}
+  data-min={shot.min}
+  style={`--r:${shot.ratio.toFixed(4)}${cropVars}`}
+>
+  {
+    shot.exists ? (
+      <a
+        class:list={['img', 'dt-lb', { crop: !!crop }]}
+        href={shot.src}
+        data-pswp-width={shot.w}
+        data-pswp-height={shot.h}
+        data-caption={shot.caption ?? shot.alt}
+        data-time={shot.time}
+        data-crop={crop ? '' : undefined}
+        data-cropped={wide || tall ? 'true' : undefined}
+      >
+        <img src={shot.display} srcset={srcset} sizes={sizes} alt={shot.alt} width={shot.w} height={shot.h} loading="lazy" decoding="async" />
+        {shot.time && (
+          <span class="stamp" aria-hidden="true">
+            {shot.time}
+          </span>
+        )}
+        {shot.time && <span class="dt-sr">{shot.time} 촬영 — 크게 보기</span>}
+      </a>
+    ) : (
+      <div class="img ph" role="img" aria-label={shot.alt} style={`--a:${angle}deg;--from:${tone.from};--to:${tone.to}`}>
+        {shot.time && (
+          <span class="stamp" aria-hidden="true">
+            {shot.time}
+          </span>
+        )}
+        {import.meta.env.DEV && <span class="ph-path">{shot.src}</span>}
+      </div>
+    )
+  }
+  {shot.caption && <figcaption>{shot.caption}</figcaption>}
+</figure>
+
+<style>
+  .shot {
+    /* 비율만큼 늘어나고, 한 줄 목표 높이(--row-h)에서 줄바꿈. 세로 사진이 혼자 남아도 --max-h보다 커지지 않는다 */
+    flex: var(--r) 1 calc(var(--r) * var(--row-h, 260px));
+    max-width: calc(var(--r) * var(--max-h, 560px));
+    min-width: 0;
+    margin: 0;
+  }
+  .img {
+    position: relative;
+    display: block;
+    aspect-ratio: var(--r);
+    overflow: hidden;
+    background: var(--ink-2);
+  }
+  .img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* 휴대폰 사진의 쨍한 파랑·초록을 어두운 필름 톤 페이지에 맞춰 조금 누르고 따뜻하게 (DayTripPage.astro --dt-grade) */
+    filter: var(--dt-grade, none);
+    transition:
+      transform 1.2s var(--ease-out),
+      filter 0.6s;
+  }
+  /* 잘라 보이기 — 원본 비율 그대로 키워서 칸 밖으로 민다 (라이트박스는 원본 전체, scripts/lightbox.ts가 잘린 자리에서 키운다) */
+  .img.crop img {
+    position: absolute;
+    max-width: none;
+    width: calc(100% * 100 / var(--cw));
+    height: calc(100% * 100 / var(--ch));
+    left: calc(-100% * var(--cx) / var(--cw));
+    top: calc(-100% * var(--cy) / var(--ch));
+    object-fit: fill;
+  }
+  a.img:hover img {
+    transform: scale(1.03);
+  }
+  a.img:focus-visible {
+    outline: 2px solid var(--c, var(--accent));
+    outline-offset: 3px;
+  }
+
+  /* 필름 날짜 각인 — 밝거나 복잡한 사진(테이프·잎) 위에서도 읽히게 모서리를 어둡게 받치고, 글자에 어두운 번짐 */
+  .img:has(.stamp)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 176px;
+    height: 76px;
+    background: radial-gradient(farthest-side at 100% 100%, rgb(0 0 0 / 0.66), rgb(0 0 0 / 0.3) 55%, transparent);
+    pointer-events: none;
+  }
+  .stamp {
+    position: absolute;
+    z-index: 1;
+    right: 10px;
+    bottom: 8px;
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    color: #ffae57;
+    text-shadow:
+      0 0 1px rgb(255 214 170 / 0.9),
+      0 0 6px rgb(255 110 20 / 0.65),
+      0 1px 1px rgb(0 0 0 / 0.95),
+      0 0 3px rgb(0 0 0 / 0.9),
+      0 0 12px rgb(0 0 0 / 0.6);
+    pointer-events: none;
+  }
+
+  .ph {
+    background:
+      radial-gradient(120% 90% at 20% 110%, rgb(0 0 0 / 0.55), transparent 60%),
+      linear-gradient(var(--a), var(--from), var(--to));
+  }
+  .ph-path {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    right: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgb(255 255 255 / 0.5);
+    word-break: break-all;
+  }
+
+  /* 캡션 — 짧은 명사구 (노트를 되풀이하지 않는다) */
+  figcaption {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--film-dim);
+  }
+
+  /* 작은 사진 — 표지판·기록 사진. 글 옆이나 본사진 옆에 붙는다 (Moment .insets / .trail) */
+  .is-small {
+    max-width: none;
+  }
+  .is-small .img::after {
+    width: 120px;
+    height: 54px;
+  }
+  .is-small .stamp {
+    right: 8px;
+    bottom: 6px;
+    font-size: 11px;
+  }
+  .is-small figcaption {
+    font-size: 12px;
+  }
+
+  /* 페이지 폭 가득 — 캡션이 화면 끝에 붙지 않게 바깥쪽만 여백 */
+  .is-full:first-child figcaption {
+    padding-left: var(--gutter);
+  }
+  .is-full:last-child figcaption {
+    padding-right: var(--gutter);
+  }
+  .is-full:last-child .stamp {
+    right: max(10px, calc(var(--gutter) / 2));
+  }
+  @media (max-width: 719px) {
+    /* 좁은 화면 — 전폭 사진은 한 장씩 가장자리까지. 비율로 늘어나는 줄 맞춤(flex-grow = 비율)은 세로 사진(비율 < 1)이
+       한 줄에 혼자일 때 남는 폭을 다 받지 못해 가운데 좁게 남는다 → 한 줄을 통째로 */
+    .is-full,
+    .is-tall {
+      flex: 1 1 100%;
+      max-width: none;
+    }
+    /* 가로로 긴 전폭 사진은 5:4보다 납작하지 않게 가운데를 잘라 높인다 (한 장의 무게가 남게) */
+    .is-full .img:not(.crop) {
+      aspect-ratio: min(var(--r), 1.25);
+    }
+    /* 세로로 긴 본사진은 글 열 폭 가득 4:5 — 가운데를 잘라 보인다 (크게 보기는 원본 전체, data-cropped) */
+    .is-tall .img {
+      aspect-ratio: 0.8;
+    }
+    /* 캡션은 본문 글 열에 맞춘다 (척추 22px + 사이 14px) — 위의 :first-child 규칙보다 우선하게 같은 선택자도 둔다 */
+    .is-full figcaption,
+    .is-full:first-child figcaption {
+      padding-inline: calc(var(--gutter) + 36px) var(--gutter);
+    }
+  }
+</style>

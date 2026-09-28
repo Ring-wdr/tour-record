@@ -33,10 +33,15 @@ for (const slug of selectedSlugs()) {
   const OUT_DIR = join('public/photos', slug);
 
   const wanted = new Map(); // "day02/20260912_121051" -> 원본 파일명
+  const trims = new Map(); // "day02/..." -> [x, y, w, h] % (md의 trim — 공개 파일 자체를 자른다)
   const re = new RegExp(`/photos/${slug}/(day\\d{2})/([\\w-]+)\\.jpg`, 'g');
   for (const f of trip.dayFiles) {
     const text = readFileSync(join(trip.daysDir, f), 'utf8');
     for (const m of text.matchAll(re)) wanted.set(`${m[1]}/${m[2]}`, `${m[2]}.jpg`);
+    for (const p of (frontmatter(join(trip.daysDir, f)).stops ?? []).flatMap((s) => s.photos ?? [])) {
+      const m = p.trim && p.src?.match(/\/(day\d{2})\/([\w-]+)\.jpg$/);
+      if (m) trims.set(`${m[1]}/${m[2]}`, p.trim);
+    }
   }
 
   let made = 0;
@@ -52,11 +57,12 @@ for (const slug of selectedSlugs()) {
     const full = join(OUT_DIR, day, `${name}.jpg`);
     const md = join(OUT_DIR, day, `${name}-md.webp`);
     const fresh = (p) => existsSync(p) && statSync(p).mtimeMs >= statSync(src).mtimeMs;
-    if (!FORCE && fresh(full) && fresh(md)) {
+    // trim이 있는 사진은 잘라 낸 범위가 바뀌었을 수 있으므로 매번 다시 만든다
+    if (!FORCE && !trims.has(key) && fresh(full) && fresh(md)) {
       skipped++;
       continue;
     }
-    await convertPhoto(src, join(OUT_DIR, day), name);
+    await convertPhoto(src, join(OUT_DIR, day), name, trims.get(key));
     made++;
   }
 

@@ -20,6 +20,24 @@ export const photoSchema = z.object({
   /** 외부 URL 사진은 라이트박스용 크기를 직접 적는다. /photos 사진은 photos.json에서 읽는다 */
   w: z.number().int().positive().optional(),
   h: z.number().int().positive().optional(),
+  /**
+   * 페이지에서 잘라 보일 부분 — 원본 기준 [왼쪽, 위, 폭, 높이] (%). 라이트박스는 원본 전체.
+   * 지금은 당일 여행 페이지(src/daytrip/)만 쓴다. 피처 여행 페이지는 무시
+   */
+  crop: z
+    .tuple([z.number().min(0).max(100), z.number().min(0).max(100), z.number().gt(0).max(100), z.number().gt(0).max(100)])
+    .refine(([x, y, w, h]) => x + w <= 100.001 && y + h <= 100.001, '잘라 낼 부분이 사진 밖으로 나갑니다')
+    .optional(),
+  /**
+   * 공개 파일 자체를 원본의 이 부분만 잘라 만든다 — [왼쪽, 위, 폭, 높이] (%). crop과 달리 라이트박스도 잘린 사진.
+   * 사람·번호판처럼 공개하면 안 되는 부분을 뺄 때 (pnpm photos가 변환 단계에서 자른다)
+   */
+  trim: z
+    .tuple([z.number().min(0).max(100), z.number().min(0).max(100), z.number().gt(0).max(100), z.number().gt(0).max(100)])
+    .refine(([x, y, w, h]) => x + w <= 100.001 && y + h <= 100.001, '잘라 낼 부분이 사진 밖으로 나갑니다')
+    .optional(),
+  /** 편집 크기 — full: 페이지 폭 가득(그날의 장면), small: 글 옆에 작게(표지판·기록 사진). 당일 여행 페이지만 쓴다 */
+  size: z.enum(['full', 'small']).optional(),
 });
 
 export const STOP_KINDS = ['arrival', 'stay', 'nature', 'food', 'culture', 'market', 'departure', 'city', 'flight'] as const;
@@ -114,6 +132,8 @@ export const tripSchema = z
         dayStartHour: z.number().int().min(0).max(12).default(0),
       })
       .default({ skipDays: [], dayStartHour: 0 }),
+    /** 목록에서 큰 피처로 보일지 — 생략하면 국내(Korea) 당일 여행만 단신(작은 행), 나머지는 피처 (src/lib/trip.ts isFeature) */
+    feature: z.boolean().optional(),
     /** true면 개발 서버(astro dev)에서만 보인다 — 운영 빌드와 R2 업로드(pnpm photos:upload)에서 빠진다 */
     draft: z.boolean().default(false),
   })

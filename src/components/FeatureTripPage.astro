@@ -54,7 +54,7 @@ const mapData = {
   <AltitudeLine days={days} note={t.altitudeNote} />
   <Outro trip={trip} />
 
-  <script type="application/json" id="trip-data" set:html={JSON.stringify(mapData)} />
+  <script type="application/json" id="trip-data" set:html={JSON.stringify(mapData).replace(/</g, '\\u003c')} />
 </Base>
 
 <script>

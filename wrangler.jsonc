@@ -1,9 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // 여러 여행을 담는 사이트 — https://tour-record.akswnd55.workers.dev
+  // 여러 여행을 담는 사이트 — https://tour-record.page (workers.dev 주소도 계속 열려 있음)
   "name": "tour-record",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-01",
+  // 커스텀 도메인 — 배포하면 DNS 레코드와 인증서를 Cloudflare가 만든다
+  "routes": [{ "pattern": "tour-record.page", "custom_domain": true }],
+  // 이미 공유된 workers.dev 링크도 계속 열리게
+  "workers_dev": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

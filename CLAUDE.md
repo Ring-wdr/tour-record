@@ -77,7 +77,8 @@
 - 식당 이름(Smile·Navat 외), 카투타우 식별(사진상 붉은 화산암 지대)
 - 4일차 Navat 아점·아르바트 거리는 일기에만 있고 지도 장소로는 아직 없음 (사진 09:30~10:50, 12:20~14:00 묶음)
 - `driveKm`은 사진 GPS 직선거리 × 1.25 추정치
-- 배포 주소: https://tour-record.akswnd55.workers.dev (커스텀 도메인을 붙이면 `astro.config.mjs`의 `site`, `worker/legacy-redirect.ts`의 TARGET도 교체)
+- 배포 주소: https://tour-record.page (Cloudflare Registrar, `wrangler.jsonc` `routes`의 커스텀 도메인). https://tour-record.akswnd55.workers.dev 도 계속 열려 있다(og:url은 `site` 기준이라 새 주소). 주소를 바꾸면 `astro.config.mjs`의 `site`, `worker/legacy-redirect.ts`의 TARGET도 교체
+- 사진은 Worker가 엣지 캐시(Cache API, 30일)에 넣는다. 같은 파일 이름으로 사진을 바꿨으면 배포 뒤 Cloudflare 대시보드에서 캐시 퍼지(tour-record.page 영역)
 - 옛 주소 https://almaty-2026.akswnd55.workers.dev 는 `worker/legacy-redirect.ts`(`wrangler.legacy.jsonc`, `pnpm cf:deploy:legacy`)가 새 주소로 301. 옛 버킷 `almaty-2026-photos`는 더 이상 쓰지 않음(삭제 전 보관 중)
 - 영상 115개(mp4)는 아직 사용하지 않음
 

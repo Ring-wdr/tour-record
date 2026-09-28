@@ -2,11 +2,11 @@
 
 다녀온 여행을 하나씩 스크롤하며 따라가는 인터랙티브 여행 기록.
 
-**🔗 https://tour-record.akswnd55.workers.dev**
+**🔗 https://tour-record.page**
 
 | 여행 | 기간 |
 |---|---|
-| [ALMATY — Seven Days in Kazakhstan](https://tour-record.akswnd55.workers.dev/trips/almaty-2026/) | 2026.09.11 – 09.17 |
+| [ALMATY — Seven Days in Kazakhstan](https://tour-record.page/trips/almaty-2026/) | 2026.09.11 – 09.17 |
 
 여행 페이지마다 같은 구성:
 

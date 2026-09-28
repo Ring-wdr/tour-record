@@ -4,7 +4,7 @@
 //   /photos/og.jpg      → /photos/almaty-2026/og.jpg
 //   /photos/dayXX/...   → /photos/almaty-2026/dayXX/...
 //   그 밖의 경로          → /trips/almaty-2026/
-const TARGET = 'https://tour-record.akswnd55.workers.dev';
+const TARGET = 'https://tour-record.page';
 const SLUG = 'almaty-2026';
 
 export default {

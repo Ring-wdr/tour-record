@@ -3,7 +3,7 @@ import { defineConfig } from 'astro/config';
 import admin from './integrations/admin/index.ts';
 
 export default defineConfig({
-  site: 'https://tour-record.akswnd55.workers.dev',
+  site: 'https://tour-record.page',
   output: 'static',
   // 관리자 화면(/admin) — astro dev에서만 존재, 운영 빌드에는 없음
   integrations: [admin()],

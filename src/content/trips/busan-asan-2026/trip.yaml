@@ -1,0 +1,19 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/busan-asan-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: NORTHBOUND
+subtitle: Six Days Up the Gyeongbu Line
+subtitleKo: 부산에서 아산까지, 상행선 6일
+description: KTX로 부산까지 단숨에 내려간 뒤, 경주·대구·대전을 한 도시씩 거슬러 올라와 천안아산에서 끝난 기차 여행 기록 (2026.06.22 – 2026.06.27).
+country: Korea
+start: 2026-06-22
+end: 2026-06-27
+# 숙소 대신 공개하는 좌표 — 경로 한가운데인 대구 시내 중심(동성로). 실제 숙소(부산·경주·대구·대전)는 trips.local.json zones에만
+base: [128.5960, 35.8690]
+heroDay: 3
+utcOffset: "+09:00"
+tracks:
+  bbox: [[126.8, 34.9], [129.4, 37.7]] # 서울역 ~ 부산 사이 (한반도 남쪽 절반)
+altitudeNote: 해운대와 송정의 모래사장, 그리고 그 바로 옆 100층 전망대. 이번 여행에서 가장 높이 올라간 곳은 산이 아니라 빌딩이었다.

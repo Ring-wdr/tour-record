@@ -1,0 +1,20 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/fukuoka-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: FUKUOKA
+subtitle: Four Days in Fukuoka & Kitakyushu
+subtitleKo: 후쿠오카와 기타큐슈에서 보낸 4일
+description: 바닷가 타워와 숲을 얹은 신사, 해협 건너 시장과 밤의 성. 후쿠오카·기타큐슈 여행 기록 (2026.05.10 – 2026.05.13).
+country: Japan
+start: 2026-05-10
+end: 2026-05-13
+# 숙소 대신 공개하는 좌표 — 하카타역. 실제 숙소(텐진 부근·고쿠라)는 trips.local.json zones에만
+base: [130.4207, 33.5897]
+heroDay: 1
+utcOffset: "+09:00"
+tracks:
+  bbox: [[130.2, 33.4], [131.1, 34.05]] # 후쿠오카~간몬 해협 밖(인천·기내)은 버림
+  maxAltitude: 400 # 이륙 직후 기내에서 찍은 사진 (후쿠오카 타워 전망실은 GPS로 약 170m)
+altitudeNote: 바닷가 타워의 전망실이 이번 여행에서 가장 높은 곳이었다. 나머지 길은 바다와 강을 따라 낮고 평평했다.

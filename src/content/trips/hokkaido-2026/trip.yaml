@@ -1,0 +1,21 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/hokkaido-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: HOKKAIDO
+subtitle: Five Days in Hokkaido
+subtitleKo: 가족과 보낸 홋카이도의 5일
+description: 비 내리는 삿포로에서 푸른 연못과 꽃 언덕, 오타루의 바다까지. 가족과 함께한 홋카이도 여행 기록 (2026.06.08 – 2026.06.12).
+country: Japan
+start: 2026-06-08
+end: 2026-06-12
+# 숙소 대신 공개하는 좌표 — 삿포로 오도리 공원. 실제 숙소는 trips.local.json zones에만
+base: [141.3545, 43.0600]
+heroDay: 3
+utcOffset: "+09:00"
+tracks:
+  bbox: [[140.5, 42.5], [143.0, 43.8]] # 홋카이도 중앙부 밖(인천·기내)은 버림
+  maxAltitude: 800 # 착륙 직전 기내 사진 (모이와산 정상 GPS 약 565m, 시라히게 폭포 약 650m)
+  skipDays: [5] # 5일차는 공항 사진뿐 — 신치토세 → 인천을 잇는 선
+altitudeNote: 공항의 평지에서 모이와산 정상, 그리고 비에이의 푸른 연못과 폭포까지. 가장 높이 올라간 곳은 도카치다케 연봉 아래 숲이었다.

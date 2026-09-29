@@ -25,7 +25,7 @@ const t = trip.data;
 
   <div class="hero-title">
     <p class="kicker">{t.subtitle}</p>
-    <h1>
+    <h1 style={`--len:${[...t.title].length}`}>
       {[...t.title].map((ch, i) => <span style={`--i:${i}`}>{ch}</span>)}
     </h1>
     <p class="ko">{t.subtitleKo}</p>
@@ -115,7 +115,8 @@ const t = trip.data;
     font-family: var(--serif-display);
     font-weight: 900;
     font-variation-settings: 'opsz' 144;
-    font-size: clamp(64px, 17vw, 260px);
+    /* 긴 제목(9자 이상)은 글자 수에 맞춰 줄여 한 줄에 들어가게 */
+    font-size: min(clamp(64px, 17vw, 260px), calc(125vw / var(--len, 6)));
     line-height: 0.85;
     letter-spacing: -0.03em;
     margin: 0;

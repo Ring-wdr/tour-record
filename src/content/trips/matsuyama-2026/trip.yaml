@@ -1,0 +1,20 @@
+# 여행 1개 = 이 폴더 하나. 폴더 이름이 URL slug (/trips/matsuyama-2026/)
+#   trip.yaml      여행 정보 (이 파일)
+#   days/dayXX.md  하루 = frontmatter(장소·좌표·카메라·사진) + 본문(일기)
+#   photos.json    사진 크기 — pnpm photos가 생성
+#   tracks.json    날짜별 이동 경로 — pnpm tracks가 생성
+title: MATSUYAMA
+subtitle: Three Days in Matsuyama
+subtitleKo: 마츠야마에서 보낸 3일
+description: 산 위의 성과 오래된 온천, 흰 벽의 옛 마을. 일본 에히메 마츠야마 여행 기록 (2026.06.29 – 2026.07.01).
+country: Japan
+start: 2026-06-29
+end: 2026-07-01
+# 숙소 대신 공개하는 좌표 — 마츠야마 시청 부근 시내 중심. 실제 숙소는 trips.local.json zones에만
+base: [132.7660, 33.8395]
+heroDay: 1
+utcOffset: "+09:00"
+tracks:
+  bbox: [[132.3, 33.3], [133.0, 34.0]] # 에히메 중부 밖(서울·인천)은 버림
+  maxAltitude: 500 # 기내 사진 대비 (마츠야마성 천수각 GPS 고도가 약 180m)
+altitudeNote: 해발 132m 가츠야마 꼭대기의 성에서 강가의 옛 마을까지. 가장 높이 올라간 곳은 성의 천수각이었다.
